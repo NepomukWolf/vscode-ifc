@@ -177,7 +177,7 @@
     "@types/vscode": "^1.93.0",
     "@vscode/vsce": "^3.6.2",
     "adm-zip": "^0.5.16",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "tar": "^7.4.3",
     "typescript": "^5.9.3",
     "vscode-languageclient": "^9.0.1"
