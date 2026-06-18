@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+- Update to IFC Language Server `v0.4.1`
+- Add automatic language-server installation support for Intel Macs
+
 ## 0.3.0
 
 - Update to IFC Language Server `v0.4.0`

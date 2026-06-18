@@ -13,9 +13,10 @@ export function getTargetPlatform(): TargetPlatform {
   return {
     platform,
     arch,
-    binaryNames: platform === "win32"
-      ? ["ifc-language-server.exe", "ifc-lsp.exe"]
-      : ["ifc-language-server", "ifc-lsp"],
+    binaryNames:
+      platform === "win32"
+        ? ["ifc-language-server.exe", "ifc-lsp.exe"]
+        : ["ifc-language-server", "ifc-lsp"],
     platformTokens: getPlatformTokens(platform),
     archTokens: getArchTokens(arch),
   };

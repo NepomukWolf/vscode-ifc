@@ -24,9 +24,7 @@ interface GitHubAsset {
   browser_download_url: string;
 }
 
-export async function downloadIfcLanguageServer(
-  options: DownloadOptions,
-): Promise<string> {
+export async function downloadIfcLanguageServer(options: DownloadOptions): Promise<string> {
   const target = getTargetPlatform();
   const normalizedVersion = normalizeVersionTag(options.version);
   options.output.info(
@@ -152,12 +150,13 @@ function scoreAsset(name: string, target: ReturnType<typeof getTargetPlatform>):
 
   const platformScore = 10;
   const archScore = 10;
-  const binaryHintScore = target.binaryNames.some((binary) => name.includes(binary.replace(".exe", "")))
+  const binaryHintScore = target.binaryNames.some((binary) =>
+    name.includes(binary.replace(".exe", "")),
+  )
     ? 4
     : 0;
-  const archiveScore = name.endsWith(".zip") || name.endsWith(".tar.gz") || name.endsWith(".tgz")
-    ? 2
-    : 1;
+  const archiveScore =
+    name.endsWith(".zip") || name.endsWith(".tar.gz") || name.endsWith(".tgz") ? 2 : 1;
 
   return platformScore + archScore + binaryHintScore + archiveScore;
 }

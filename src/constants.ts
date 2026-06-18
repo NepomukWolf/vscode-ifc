@@ -1,1 +1,1 @@
-export const PINNED_LANGUAGE_SERVER_VERSION = "v0.4.0";
+export const PINNED_LANGUAGE_SERVER_VERSION = "v0.4.1";
