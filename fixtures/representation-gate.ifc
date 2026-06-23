@@ -1,0 +1,95 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION((''),'2;1');
+FILE_NAME('representation-gate.ifc','',(''),(''),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#9= IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,$,$,$);
+/* #10: ParentContext (#9) at arg index 6 -> not renderable */
+#10= IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#9,$,.MODEL_VIEW.,$);
+
+/* #100: SweptSolid body, spaced `= ` -> renderable */
+#100= IFCWALL('wall-body',$,'Body wall',$,$,#101,#102,$);
+#101= IFCLOCALPLACEMENT($,$);
+#102= IFCPRODUCTDEFINITIONSHAPE($,$,(#103));
+#103= IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#104));
+#104= IFCEXTRUDEDAREASOLID($,$,$,1.);
+
+/* #200: Curve2D axis only -> not renderable */
+#200=IFCWALL('wall-axis',$,'Axis wall',$,$,#201,#202,$);
+#201=IFCLOCALPLACEMENT($,$);
+#202=IFCPRODUCTDEFINITIONSHAPE($,$,(#203));
+#203=IFCSHAPEREPRESENTATION(#9,'Axis','Curve2D',(#204));
+#204=IFCPOLYLINE(());
+
+/* #300: axis + body -> renderable */
+#300=IFCWALL('wall-mixed',$,'Mixed wall',$,$,#301,#302,$);
+#301=IFCLOCALPLACEMENT($,$);
+#302=IFCPRODUCTDEFINITIONSHAPE($,$,(#303,#305));
+#303=IFCSHAPEREPRESENTATION(#9,'Axis','Curve2D',(#304));
+#304=IFCPOLYLINE(());
+#305=IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#306));
+#306=IFCEXTRUDEDAREASOLID($,$,$,1.);
+
+/* #400: no representation ($) -> not renderable */
+#400=IFCWALL('wall-none',$,'No-rep wall',$,$,#401,$,$);
+#401=IFCLOCALPLACEMENT($,$);
+
+/* #500: proxy with Brep body -> renderable */
+#500=IFCBUILDINGELEMENTPROXY('proxy-brep',$,'Proxy',$,$,#501,#502,$);
+#501=IFCLOCALPLACEMENT($,$);
+#502=IFCPRODUCTDEFINITIONSHAPE($,$,(#503));
+#503=IFCSHAPEREPRESENTATION(#9,'Body','Brep',(#504));
+#504=IFCFACETEDBREP($);
+
+/* #600: arg 6 resolves to a context, not a shape holder -> not renderable */
+#600=IFCWALL('wall-badref',$,'Bad-ref wall',$,$,#601,#9,$);
+#601=IFCLOCALPLACEMENT($,$);
+
+/* #700: IfcStair assembly, no own representation, aggregates a flight with a
+   Body -> renderable via descendant, not via its own rep */
+#700=IFCSTAIR('stair-assembly',$,'Stair',$,$,#701,$,$,.STRAIGHT.);
+#701=IFCLOCALPLACEMENT($,$);
+#710=IFCSTAIRFLIGHT('flight',$,'Flight',$,$,#711,#712,$,$,$,$,$);
+#711=IFCLOCALPLACEMENT($,$);
+#712=IFCPRODUCTDEFINITIONSHAPE($,$,(#713));
+#713=IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#714));
+#714=IFCEXTRUDEDAREASOLID($,$,$,1.);
+#720=IFCRELAGGREGATES('agg',$,$,$,#700,(#710));
+
+/* #800: IfcElementAssembly whose only child has no geometry -> not renderable */
+#800=IFCELEMENTASSEMBLY('asm-empty',$,'Empty asm',$,$,#801,$,$,$,$);
+#801=IFCLOCALPLACEMENT($,$);
+#810=IFCFURNISHINGELEMENT('furn',$,'Furn',$,$,#811,$,$);
+#811=IFCLOCALPLACEMENT($,$);
+#820=IFCRELAGGREGATES('agg2',$,$,$,#800,(#810));
+
+/* Spatial tree: project -> building -> storey. The storey CONTAINS a wall (#100)
+   via spatial containment and AGGREGATES a space (#930). Previewing a storey/
+   building renders the contained physical elements (the wall) but never the space
+   volume; the project root is never previewable. */
+#900=IFCBUILDINGSTOREY('storey',$,'Level 1',$,$,#901,$,'Level 1',.ELEMENT.,$);
+#901=IFCLOCALPLACEMENT($,$);
+#920=IFCRELCONTAINEDINSPATIALSTRUCTURE('contain',$,$,$,(#100),#900);
+#930=IFCSPACE('space-1',$,'Room',$,$,#931,#932,'R1',.ELEMENT.,.INTERNAL.,$);
+#931=IFCLOCALPLACEMENT($,$);
+#932=IFCPRODUCTDEFINITIONSHAPE($,$,(#933));
+#933=IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#934));
+#934=IFCEXTRUDEDAREASOLID($,$,$,1.);
+#940=IFCRELAGGREGATES('agg3',$,$,$,#900,(#930));
+#1000=IFCBUILDING('bldg',$,'Building',$,$,#1001,$,'Building',.ELEMENT.,$,$,$);
+#1001=IFCLOCALPLACEMENT($,$);
+#1010=IFCRELAGGREGATES('agg4',$,$,$,#1000,(#900));
+#1200=IFCPROJECT('project',$,'Project',$,$,$,$,$,$);
+#1210=IFCRELAGGREGATES('agg5',$,$,$,#1200,(#1000));
+
+/* #1100: IfcOpeningElement — real Body geometry that web-ifc won't stream; must be
+   re-presented under a proxy so it renders */
+#1100=IFCOPENINGELEMENT('opening',$,'Opening',$,$,#1101,#1102,$);
+#1101=IFCLOCALPLACEMENT($,$);
+#1102=IFCPRODUCTDEFINITIONSHAPE($,$,(#1103));
+#1103=IFCSHAPEREPRESENTATION(#9,'Body','SweptSolid',(#1104));
+#1104=IFCEXTRUDEDAREASOLID($,$,$,1.);
+ENDSEC;
+END-ISO-10303-21;

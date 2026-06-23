@@ -1,0 +1,136 @@
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+#app {
+  position: relative;
+}
+
+.viewer-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.viewer-canvas canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+.hud {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  max-width: 60%;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.hud-title {
+  font-weight: 600;
+  font-size: 1.15em;
+}
+
+.hud-sub {
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.hud-stats {
+  opacity: 0.7;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-warn {
+  margin-top: 4px;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+.toolbar {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+
+.tool-button {
+  font-family: inherit;
+  font-size: 0.9em;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.2));
+  border: 1px solid var(--vscode-contrastBorder, transparent);
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.35));
+}
+
+.tool-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.state-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  pointer-events: none;
+  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  background: color-mix(in srgb, var(--vscode-editor-background) 55%, transparent);
+}
+
+.state-overlay.busy::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hint {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  opacity: 0.55;
+  font-size: 0.85em;
+  pointer-events: none;
+}

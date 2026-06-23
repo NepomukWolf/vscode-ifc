@@ -16,6 +16,7 @@ It combines local editor support with the IFC Language Server to provide:
 - Go to definition
 - Find references
 - Semantic tokens
+- 3D preview of individual elements
 
 ## Installation
 
@@ -25,7 +26,7 @@ No manual language-server setup is required for normal use.
 
 Prebuilt `.vsix` packages are available on the GitHub releases page:
 
-https://github.com/NepomukWolf/vscode-ifc/releases
+<https://github.com/NepomukWolf/vscode-ifc/releases>
 
 To install the extension from a release:
 
@@ -77,6 +78,12 @@ Clean syntax highlighting for IFC STEP files.
 
 ![Syntax Highlighting](resources/syntax_highlighting.png)
 
+### 3D Element Preview
+
+Render any IFC element in 3D without leaving the editor. Place the cursor on an element (or use the `Preview in 3D` CodeLens above any element with geometry) and run **IFC: Preview Element in 3D**. A side panel renders that element and its assembly children; orbit, zoom, and click geometry to jump back to its source line.
+
+Rather than loading the whole model, the extension extracts just the selected element's reference closure into a tiny sub-model, so a single element renders quickly even from very large federated files. Geometry is produced by [web-ifc](https://github.com/ThatOpen/engine_web-ifc) and drawn with [three.js](https://threejs.org/).
+
 After installation, open an IFC file and the extension will automatically download the required IFC language server.
 
 ## Usage
@@ -101,6 +108,9 @@ Most users do not need to change anything. Advanced settings are available for d
 - `ifc.analysis.astFileSizeLimitMb`: Maximum file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics and derived-value hover.
 - `ifc.semanticTokens.enabled`: Enable range-based semantic tokens provided by the language server.
 - `ifc.trace.server`: Trace level for the VS Code language client.
+- `ifc.viewer.includeChildren`: Include an element's decomposition/assembly children in the 3D preview.
+- `ifc.viewer.codeLens`: Show the `Preview in 3D` CodeLens above any element that has geometry (follows the viewport on large files).
+- `ifc.viewer.maxFileSizeMb`: Maximum IFC file size the 3D preview will index to extract an element.
 
 Changes to IFC settings restart the language server automatically.
 
@@ -109,6 +119,7 @@ Changes to IFC settings restart the language server automatically.
 - `IFC: Download Language Server`
 - `IFC: Restart Language Server`
 - `IFC: Show Resolved Language Server`
+- `IFC: Preview Element in 3D`
 
 ## Editor Configuration
 

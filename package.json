@@ -2,7 +2,7 @@
   "name": "vscode-ifc",
   "displayName": "IFC Language Tools",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "publisher": "wolfnepomuk",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -37,7 +37,8 @@
     "onLanguage:ifc",
     "onCommand:ifc.downloadLanguageServer",
     "onCommand:ifc.restartLanguageServer",
-    "onCommand:ifc.showResolvedServer"
+    "onCommand:ifc.showResolvedServer",
+    "onCommand:ifc.viewElement"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -75,8 +76,36 @@
       {
         "command": "ifc.showResolvedServer",
         "title": "IFC Language Support: Show Resolved Language Server"
+      },
+      {
+        "command": "ifc.viewElement",
+        "title": "Preview Element in 3D",
+        "category": "IFC",
+        "icon": "$(eye)"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc",
+          "group": "navigation@99"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ifc.viewElement",
+          "when": "resourceLangId == ifc"
+        }
+      ]
+    },
     "configuration": {
       "title": "IFC Language Support",
       "properties": {
@@ -141,6 +170,22 @@
           ],
           "default": "off",
           "markdownDescription": "Trace level for the IFC language server protocol traffic."
+        },
+        "ifc.viewer.includeChildren": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When previewing an element in 3D, also include its decomposition/assembly children (for example a stair's flights or a roof's slabs)."
+        },
+        "ifc.viewer.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a `Preview in 3D` CodeLens above every element that has geometry (any product with a shape — walls, ducts, furniture, assemblies, …). On large files the lens follows the editor viewport so it stays responsive; it is bounded by `#ifc.viewer.maxFileSizeMb#`."
+        },
+        "ifc.viewer.maxFileSizeMb": {
+          "type": "number",
+          "default": 400,
+          "minimum": 1,
+          "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
         }
       }
     },
@@ -153,7 +198,9 @@
     }
   },
   "files": [
-    "out",
+    "out/**/*.js",
+    "out/**/*.wasm",
+    "out/**/*.css",
     "syntaxes",
     "resources",
     "language-configuration.json",
@@ -162,24 +209,33 @@
     "LICENSE"
   ],
   "scripts": {
-    "compile": "tsc -p ./ --noEmit && node esbuild.js",
+    "compile": "tsc -p ./ --noEmit && tsc -p media/viewer/tsconfig.json --noEmit && node esbuild.js",
     "check": "biome check .",
     "check:write": "biome check --write .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "watch": "node esbuild.js --watch",
+    "build:test": "esbuild src/viewer/*.test.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
+    "test": "npm run build:test && node --test out/test/*.test.js",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@types/node": "^20.17.50",
+    "@types/three": "^0.184.0",
     "@types/vscode": "^1.93.0",
     "@vscode/vsce": "^3.6.2",
     "adm-zip": "^0.5.16",
     "esbuild": "^0.25.0",
     "tar": "^7.4.3",
+    "three": "^0.184.0",
     "typescript": "^5.9.3",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^9.0.1",
+    "web-ifc": "^0.0.77"
+  },
+  "dependencies": {
+    "@thatopen/components": "^3.4.6",
+    "lit-html": "^3.3.3"
   }
 }

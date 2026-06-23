@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Add 3D previews for IFC elements directly in VS Code
+- Add `Preview in 3D` CodeLens, editor actions, and Command Palette support
+- Include assembly children and spatially contained elements in previews
+- Add click-to-reveal navigation from viewer geometry back to the IFC source
+- Add settings for CodeLens visibility, child inclusion, and maximum preview file size
+
 ## 0.3.3
 
 - Update to IFC Language Server `v0.4.1`
