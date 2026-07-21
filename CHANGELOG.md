@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Update extension build and packaging dependencies
+- Resolve dependency audit findings in archive extraction packages
+- Pin VS Code API typings to the minimum supported VS Code version
+
 ## 0.4.0
 
 - Add 3D previews for IFC elements directly in VS Code
