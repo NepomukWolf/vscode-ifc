@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2
+
+- Update to IFC Language Server `v0.5.0`
+- Add language-server support for enum hover, signature help, and local STEP ID document highlights
+
 ## 0.4.1
 
 - Update extension build and packaging dependencies
