@@ -230,7 +230,7 @@
     "esbuild": "^0.28.1",
     "tar": "^7.5.20",
     "three": "^0.184.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vscode-languageclient": "^9.0.1",
     "web-ifc": "^0.0.77"
   },
