@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -51,7 +51,7 @@ jobs:
         run: vsce package --out extension.vsix
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.1
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
