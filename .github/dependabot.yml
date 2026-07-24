@@ -7,6 +7,11 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    # @types/vscode declares the minimum VS Code API level and must stay <=
+    # engines.vscode, which vsce enforces at package time. Bump it by hand
+    # together with engines.vscode when a newer API is actually needed.
+    ignore:
+      - dependency-name: "@types/vscode"
     groups:
       npm:
         patterns:
