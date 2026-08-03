@@ -1,11 +1,18 @@
 # IFC Language Support for VS Code
 
-[![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/)
+[![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/items?itemName=wolfnepomuk.vscode-ifc)
+[![Open VSX](https://img.shields.io/badge/Open%20VSX-vscode--ifc-blue)](https://open-vsx.org/extension/wolfnepomuk/vscode-ifc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This extension adds language support for IFC STEP files (`.ifc`, `.step`, `.stp`) in Visual Studio Code and is powered by the [IFC Language Server](https://github.com/NepomukWolf/IFC-Language-Server).
 
 For normal use, install the extension and open an IFC file. The extension automatically installs the language server version pinned by the current extension release.
+
+## Documentation
+
+User documentation is available at:
+
+<https://NepomukWolf.github.io/vscode-ifc/>
 
 It combines local editor support with the IFC Language Server to provide:
 
@@ -15,6 +22,10 @@ It combines local editor support with the IFC Language Server to provide:
 - Hover information
 - Go to definition
 - Find references
+- Document symbols for Outline, breadcrumbs, and go-to-symbol
+- Document highlights for local STEP identifiers
+- Signature help and inlay hints for IFC entity arguments
+- IFC file scaffold generation
 - Semantic tokens
 - 3D preview of individual elements
 
@@ -22,9 +33,21 @@ It combines local editor support with the IFC Language Server to provide:
 
 No manual language-server setup is required for normal use.
 
+### Install from VS Code
+
+The extension is available on the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=wolfnepomuk.vscode-ifc) and can be installed from VS Code's built-in Extensions view.
+
+1. Open VS Code.
+2. Open the Extensions view.
+3. Search for `IFC Language Tools`.
+4. Select the extension published by `wolfnepomuk`.
+5. Click **Install**.
+
+The extension is also available on [Open VSX](https://open-vsx.org/extension/wolfnepomuk/vscode-ifc).
+
 ### Install from a `.vsix` Release
 
-Prebuilt `.vsix` packages are available on the GitHub releases page:
+If you prefer a manual install, prebuilt `.vsix` packages are available on the GitHub releases page:
 
 <https://github.com/NepomukWolf/vscode-ifc/releases>
 
@@ -40,37 +63,33 @@ To install the extension from a release:
 
 ## Features
 
-### Hover Preview for Step IDs
+The extension provides hover, navigation, document symbols, diagnostics, editing assistance, semantic highlighting, and a focused 3D preview for IFC STEP files. For detailed usage, configuration, limitations, and troubleshooting, see the [documentation site](https://NepomukWolf.github.io/vscode-ifc/).
 
-Hover over STEP identifiers such as `#12345` to preview their definitions.
+### Hover Preview
+
+Hover over STEP identifiers such as `#12345` to preview their definitions, hover over IFC entity names such as `IFCWALL` to view schema documentation with a link to the official documentation for the correct schema version, and inspect derived values calculated by the language server where available.
 
 ![Hover Preview](resources/reference_hover.png)
-
-### IFC Entity Documentation on Hover
-
-Hover over IFC entity names such as `IFCWALL` to view schema documentation.
 
 ![Entity Hover](resources/entity_hover.png)
 
 ### Diagnostics
 
-The language server validates IFC entities and attribute values directly in the editor against the correct IFC schema.
-
-It reports issues such as invalid references, wrong primitive value types, unknown entity names, and invalid enumeration values, incorrect cardinalities.
+The language server validates IFC entities and attribute values directly in the editor against the selected IFC schema.
 
 ![Diagnostics](resources/diagnostics1.png)
 
 ![Diagnostics](resources/diagnostics2.png)
 
-### Go to Definition
+### Navigation
 
-Use `F12` or Ctrl/Cmd-click on STEP identifiers such as `#12345` to jump directly to their definitions.
-
-### Find All References
-
-Use `Shift + F12` to locate all references to an entity.
+Use `F12` or Ctrl/Cmd-click on STEP identifiers such as `#12345` to jump directly to their definitions. Use `Shift+F12` to locate all references to an entity.
 
 ![Find References](resources/go_to_reference.png)
+
+### Document Symbols
+
+Use VS Code's Outline, breadcrumbs, or go-to-symbol navigation to browse the IFC spatial hierarchy exposed by the language server.
 
 ### Syntax Highlighting
 
@@ -80,11 +99,9 @@ Clean syntax highlighting for IFC STEP files.
 
 ### 3D Element Preview
 
-Render any IFC element in 3D without leaving the editor. Place the cursor on an element (or use the `Preview in 3D` CodeLens above any element with geometry) and run **IFC: Preview Element in 3D**. A side panel renders that element and its assembly children; orbit, zoom, and click geometry to jump back to its source line.
+Render an IFC element in 3D without leaving the editor. Place the cursor on an element, or use the `Preview in 3D` CodeLens above an element with geometry, and run **IFC: Preview Element in 3D**. Click geometry in the viewer to jump back to the code line where that element is defined.
 
 Rather than loading the whole model, the extension extracts just the selected element's reference closure into a tiny sub-model, so a single element renders quickly even from very large federated files. Geometry is produced by [web-ifc](https://github.com/ThatOpen/engine_web-ifc) and drawn with [three.js](https://threejs.org/).
-
-After installation, open an IFC file and the extension will automatically download the required IFC language server.
 
 ## Usage
 
@@ -93,6 +110,8 @@ After installation, open an IFC file and the extension will automatically downlo
 3. Hover over STEP IDs such as `#12345` or IFC entity names such as `IFCWALL`.
 4. Use `F12` or Ctrl/Cmd-click for go to definition.
 5. Use `Shift + F12` for find references.
+
+More workflows are documented at <https://NepomukWolf.github.io/vscode-ifc/>.
 
 ## Settings
 
