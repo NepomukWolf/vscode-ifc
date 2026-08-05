@@ -109,34 +109,6 @@
     "configuration": {
       "title": "IFC Language Support",
       "properties": {
-        "ifc.server.path": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Absolute path to a custom IFC language server binary."
-        },
-        "ifc.server.args": {
-          "type": "array",
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "markdownDescription": "Additional command-line arguments passed to the IFC language server."
-        },
-        "ifc.server.versionOverride": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Advanced: use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.3.0`."
-        },
-        "ifc.server.githubRepository": {
-          "type": "string",
-          "default": "NepomukWolf/IFC-Language-Server",
-          "markdownDescription": "GitHub repository used for IFC language server downloads, in owner/repo form."
-        },
-        "ifc.server.downloadAssetPattern": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Optional substring used to narrow the selected GitHub release asset."
-        },
         "ifc.schema.overwriteExpSchemaWithLocal": {
           "type": "string",
           "default": "",
@@ -161,16 +133,6 @@
           "default": true,
           "markdownDescription": "Enable range-based semantic tokens provided by the IFC language server."
         },
-        "ifc.trace.server": {
-          "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
-          "default": "off",
-          "markdownDescription": "Trace level for the IFC language server protocol traffic."
-        },
         "ifc.viewer.includeChildren": {
           "type": "boolean",
           "default": true,
@@ -186,6 +148,44 @@
           "default": 400,
           "minimum": 1,
           "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
+        },
+        "ifc.server.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Advanced debug/development setting. Absolute path to a custom IFC language server binary. Leave empty for normal use so the extension can use its managed downloaded server. If this path points to a deleted binary, the language server will fail to start; clear the setting to recover."
+        },
+        "ifc.server.args": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Advanced debug/development setting. Additional command-line arguments passed to the IFC language server."
+        },
+        "ifc.server.versionOverride": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Advanced debug/development setting. Use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.3.0`."
+        },
+        "ifc.server.githubRepository": {
+          "type": "string",
+          "default": "NepomukWolf/IFC-Language-Server",
+          "markdownDescription": "Advanced debug/development setting. GitHub repository used for IFC language server downloads, in owner/repo form."
+        },
+        "ifc.server.downloadAssetPattern": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Advanced debug/development setting. Optional substring used to narrow the selected GitHub release asset."
+        },
+        "ifc.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "markdownDescription": "Advanced debug setting. Trace level for IFC language server protocol traffic."
         }
       }
     },
@@ -221,17 +221,17 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
-    "@types/node": "^20.17.50",
-    "@types/three": "^0.184.0",
+    "@biomejs/biome": "2.5.4",
+    "@types/node": "^26.1.1",
+    "@types/three": "^0.185.1",
     "@types/vscode": "1.93.0",
     "@vscode/vsce": "^3.9.2",
     "adm-zip": "^0.6.0",
     "esbuild": "^0.28.1",
     "tar": "^7.5.20",
-    "three": "^0.184.0",
-    "typescript": "^5.9.3",
-    "vscode-languageclient": "^9.0.1",
+    "three": "^0.185.1",
+    "typescript": "^7.0.2",
+    "vscode-languageclient": "^10.1.0",
     "web-ifc": "^0.0.77"
   },
   "dependencies": {
