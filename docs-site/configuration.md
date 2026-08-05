@@ -2,7 +2,7 @@
 
 Most users do not need to change language-server settings. The extension automatically downloads and uses the language server version pinned by the installed extension release.
 
-Settings are available for viewer behavior, large-file handling, schema experiments, and advanced debugging.
+Settings are available for viewer behavior, large-file handling, schema experiments, and debugging.
 
 ![IFC settings in VS Code](/assets/settings.png)
 
@@ -22,7 +22,7 @@ Settings are available for viewer behavior, large-file handling, schema experime
 - `ifc.schema.overwriteExpSchemaWithLocal`: force diagnostics and hover to use a local `.exp` schema file
 - `ifc.schema.addLocalSchemaToSelection`: add local `.exp` files or directories to schema selection
 
-## Advanced Debug and Development
+## Debugging
 
 These settings are intended for extension development, language-server development, and troubleshooting. Leave them unset unless you know you need them.
 

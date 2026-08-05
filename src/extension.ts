@@ -2,8 +2,11 @@ import * as vscode from "vscode";
 import { IfcLanguageClientManager } from "./client";
 import { registerVisibleIdHighlight } from "./idHighlight";
 import { createOutputChannel } from "./logging";
-import { resolveServer } from "./serverPath";
+import { isConfiguredServerPathError, resolveServer } from "./serverPath";
 import { registerViewer } from "./viewer";
+
+const DOWNLOAD_LANGUAGE_SERVER = "Download Language Server";
+const OPEN_SETTINGS = "Open Settings";
 
 /** Configuration sections that require a language-server restart when changed. */
 const SERVER_CONFIG_SECTIONS = [
@@ -33,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await nextManager.start({ forceDownload: true });
         void vscode.window.showInformationMessage("IFC language server downloaded and started.");
       } catch (error) {
-        handleError("Failed to download IFC language server.", error, output);
+        await handleError("Failed to download IFC language server.", error, output);
       }
     }),
   );
@@ -44,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await nextManager.restart();
         void vscode.window.showInformationMessage("IFC language server restarted.");
       } catch (error) {
-        handleError("Failed to restart IFC language server.", error, output);
+        await handleError("Failed to restart IFC language server.", error, output);
       }
     }),
   );
@@ -61,7 +64,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         output.info(message);
         void vscode.window.showInformationMessage(message);
       } catch (error) {
-        handleError("Failed to resolve IFC language server.", error, output);
+        await handleError("Failed to resolve IFC language server.", error, output);
       }
     }),
   );
@@ -79,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       try {
         await nextManager.restart();
       } catch (error) {
-        handleError(
+        await handleError(
           "Failed to restart IFC language server after configuration change.",
           error,
           output,
@@ -91,22 +94,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   try {
     await nextManager.start();
   } catch (error) {
+    if (isConfiguredServerPathError(error)) {
+      await handleError("Failed to start IFC language server.", error, output);
+      return;
+    }
+
     output.error(`Initial IFC language server startup failed: ${asMessage(error)}`);
     const action = await vscode.window.showWarningMessage(
       asMessage(error),
-      "Download Language Server",
+      DOWNLOAD_LANGUAGE_SERVER,
     );
 
-    if (action === "Download Language Server") {
+    if (action === DOWNLOAD_LANGUAGE_SERVER) {
       try {
         await nextManager.start({ forceDownload: true });
       } catch (downloadError) {
-        handleError("Failed to start IFC language server.", downloadError, output);
+        await handleError("Failed to start IFC language server.", downloadError, output);
       }
       return;
     }
 
-    handleError("Failed to start IFC language server.", error, output);
+    await handleError("Failed to start IFC language server.", error, output);
   }
 }
 
@@ -115,9 +123,22 @@ export async function deactivate(): Promise<void> {
   manager = undefined;
 }
 
-function handleError(prefix: string, error: unknown, output: vscode.LogOutputChannel): void {
+async function handleError(
+  prefix: string,
+  error: unknown,
+  output: vscode.LogOutputChannel,
+): Promise<void> {
   const message = `${prefix} ${asMessage(error)}`;
   output.error(message);
+
+  if (isConfiguredServerPathError(error)) {
+    const action = await vscode.window.showWarningMessage(message, OPEN_SETTINGS);
+    if (action === OPEN_SETTINGS) {
+      await vscode.commands.executeCommand("workbench.action.openSettings", "ifc.server.path");
+    }
+    return;
+  }
+
   void vscode.window.showErrorMessage(message);
 }
 
