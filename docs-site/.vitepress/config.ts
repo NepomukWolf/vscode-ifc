@@ -6,6 +6,7 @@ export default defineConfig({
   description: "VS Code extension documentation for IFC STEP files",
   cleanUrls: true,
   themeConfig: {
+    logo: "/assets/logo.svg",
     search: {
       provider: "local",
     },

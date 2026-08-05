@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="resources/logo.svg" alt="IFC Language Tools logo" width="96">
+</p>
+
 # IFC Language Support for VS Code
 
 [![Visual Studio Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/items?itemName=wolfnepomuk.vscode-ifc)
