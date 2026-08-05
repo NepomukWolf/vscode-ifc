@@ -2,7 +2,7 @@
   "name": "vscode-ifc",
   "displayName": "IFC Language Tools",
   "description": "Professional VS Code support for IFC STEP files powered by the IFC Language Server.",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "publisher": "wolfnepomuk",
   "license": "MIT",
   "icon": "resources/icon.png",

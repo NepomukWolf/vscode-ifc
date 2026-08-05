@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Update to IFC Language Server `v0.6.0`
+- Improve diagnostics and recovery guidance for stale custom language-server paths
+- Reorganize VS Code settings into user-facing and debugging sections
+
 ## 0.4.2
 
 - Update to IFC Language Server `v0.5.0`
