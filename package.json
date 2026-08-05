@@ -200,7 +200,8 @@
       "[ifc]": {
         "editor.colorDecorators": false,
         "editor.matchBrackets": "always",
-        "editor.bracketPairColorization.enabled": true
+        "editor.bracketPairColorization.enabled": true,
+        "editor.inlayHints.enabled": "offUnlessPressed"
       }
     }
   },
