@@ -221,21 +221,21 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.4",
-    "@types/node": "^26.1.1",
+    "@biomejs/biome": "2.5.6",
+    "@types/node": "^26.1.2",
     "@types/three": "^0.185.1",
     "@types/vscode": "1.93.0",
     "@vscode/vsce": "^3.9.2",
     "adm-zip": "^0.6.0",
     "esbuild": "^0.28.1",
-    "tar": "^7.5.20",
+    "tar": "^7.5.22",
     "three": "^0.185.1",
     "typescript": "^7.0.2",
     "vscode-languageclient": "^10.1.0",
     "web-ifc": "^0.0.77"
   },
   "dependencies": {
-    "@thatopen/components": "^3.4.6",
+    "@thatopen/components": "^3.4.8",
     "lit-html": "^3.3.3"
   }
 }
