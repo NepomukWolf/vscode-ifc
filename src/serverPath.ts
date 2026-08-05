@@ -12,6 +12,21 @@ export interface ResolvedServer {
   source: "configured" | "downloaded";
 }
 
+export class ConfiguredServerPathError extends Error {
+  public constructor(
+    public readonly configuredPath: string,
+    public readonly reason: "missing" | "not-file",
+    public readonly cause?: unknown,
+  ) {
+    super(toConfiguredServerPathMessage(configuredPath, reason));
+    this.name = "ConfiguredServerPathError";
+  }
+}
+
+export function isConfiguredServerPathError(error: unknown): error is ConfiguredServerPathError {
+  return error instanceof ConfiguredServerPathError;
+}
+
 export async function resolveServer(
   context: vscode.ExtensionContext,
   output: vscode.LogOutputChannel,
@@ -74,12 +89,31 @@ export async function resolveServer(
 }
 
 async function requireExecutable(candidatePath: string): Promise<string> {
-  const stat = await fs.stat(candidatePath);
+  let stat: Awaited<ReturnType<typeof fs.stat>>;
+  try {
+    stat = await fs.stat(candidatePath);
+  } catch (error) {
+    throw new ConfiguredServerPathError(candidatePath, "missing", error);
+  }
+
   if (!stat.isFile()) {
-    throw new Error(`Configured server path is not a file: ${candidatePath}`);
+    throw new ConfiguredServerPathError(candidatePath, "not-file");
   }
 
   return candidatePath;
+}
+
+function toConfiguredServerPathMessage(
+  configuredPath: string,
+  reason: ConfiguredServerPathError["reason"],
+): string {
+  const problem = reason === "not-file" ? "is not a file" : "does not exist";
+
+  return (
+    `The configured IFC language server path ${problem}: ${configuredPath}. ` +
+    "This path comes from the `ifc.server.path` VS Code setting. " +
+    "Clear `ifc.server.path` to use the extension-managed language server."
+  );
 }
 
 async function findCachedDownload(

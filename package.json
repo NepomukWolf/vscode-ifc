@@ -106,89 +106,96 @@
         }
       ]
     },
-    "configuration": {
-      "title": "IFC Language Support",
-      "properties": {
-        "ifc.schema.overwriteExpSchemaWithLocal": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Optional absolute path to a local `.exp` schema file. If set, the language server uses this schema for diagnostics and hover regardless of the IFC file's declared `FILE_SCHEMA(...)`."
-        },
-        "ifc.schema.addLocalSchemaToSelection": {
-          "type": "array",
-          "default": [],
-          "items": {
-            "type": "string"
+    "configuration": [
+      {
+        "title": "IFC Language Support",
+        "properties": {
+          "ifc.schema.overwriteExpSchemaWithLocal": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Optional absolute path to a local `.exp` schema file. If set, the language server uses this schema for diagnostics and hover regardless of the IFC file's declared `FILE_SCHEMA(...)`."
           },
-          "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
-        },
-        "ifc.analysis.astFileSizeLimitMb": {
-          "type": "number",
-          "default": 70,
-          "minimum": 0.001,
-          "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics, derived-value hover, and the spatial Outline."
-        },
-        "ifc.semanticTokens.enabled": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Enable range-based semantic tokens provided by the IFC language server."
-        },
-        "ifc.viewer.includeChildren": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "When previewing an element in 3D, also include its decomposition/assembly children (for example a stair's flights or a roof's slabs)."
-        },
-        "ifc.viewer.codeLens": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Show a `Preview in 3D` CodeLens above every element that has geometry (any product with a shape — walls, ducts, furniture, assemblies, …). On large files the lens follows the editor viewport so it stays responsive; it is bounded by `#ifc.viewer.maxFileSizeMb#`."
-        },
-        "ifc.viewer.maxFileSizeMb": {
-          "type": "number",
-          "default": 400,
-          "minimum": 1,
-          "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
-        },
-        "ifc.server.path": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Advanced debug/development setting. Absolute path to a custom IFC language server binary. Leave empty for normal use so the extension can use its managed downloaded server. If this path points to a deleted binary, the language server will fail to start; clear the setting to recover."
-        },
-        "ifc.server.args": {
-          "type": "array",
-          "default": [],
-          "items": {
-            "type": "string"
+          "ifc.schema.addLocalSchemaToSelection": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
           },
-          "markdownDescription": "Advanced debug/development setting. Additional command-line arguments passed to the IFC language server."
-        },
-        "ifc.server.versionOverride": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Advanced debug/development setting. Use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.3.0`."
-        },
-        "ifc.server.githubRepository": {
-          "type": "string",
-          "default": "NepomukWolf/IFC-Language-Server",
-          "markdownDescription": "Advanced debug/development setting. GitHub repository used for IFC language server downloads, in owner/repo form."
-        },
-        "ifc.server.downloadAssetPattern": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Advanced debug/development setting. Optional substring used to narrow the selected GitHub release asset."
-        },
-        "ifc.trace.server": {
-          "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
-          "default": "off",
-          "markdownDescription": "Advanced debug setting. Trace level for IFC language server protocol traffic."
+          "ifc.analysis.astFileSizeLimitMb": {
+            "type": "number",
+            "default": 70,
+            "minimum": 0.001,
+            "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics, derived-value hover, and the spatial Outline."
+          },
+          "ifc.semanticTokens.enabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Enable range-based semantic tokens provided by the IFC language server."
+          },
+          "ifc.viewer.includeChildren": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "When previewing an element in 3D, also include its decomposition/assembly children (for example a stair's flights or a roof's slabs)."
+          },
+          "ifc.viewer.codeLens": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Show a `Preview in 3D` CodeLens above every element that has geometry (any product with a shape — walls, ducts, furniture, assemblies, …). On large files the lens follows the editor viewport so it stays responsive; it is bounded by `#ifc.viewer.maxFileSizeMb#`."
+          },
+          "ifc.viewer.maxFileSizeMb": {
+            "type": "number",
+            "default": 400,
+            "minimum": 1,
+            "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
+          }
+        }
+      },
+      {
+        "title": "IFC Language Support: Debugging",
+        "properties": {
+          "ifc.server.path": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Debug/development setting. Absolute path to a custom IFC language server binary. Leave empty for normal use so the extension can use its managed downloaded server. If this path points to a deleted binary, the language server will fail to start; clear the setting to recover."
+          },
+          "ifc.server.args": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Debug/development setting. Additional command-line arguments passed to the IFC language server."
+          },
+          "ifc.server.versionOverride": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Debug/development setting. Use a specific IFC language server Git tag instead of the version pinned by the extension, for example `v0.3.0`."
+          },
+          "ifc.server.githubRepository": {
+            "type": "string",
+            "default": "NepomukWolf/IFC-Language-Server",
+            "markdownDescription": "Debug/development setting. GitHub repository used for IFC language server downloads, in owner/repo form."
+          },
+          "ifc.server.downloadAssetPattern": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Debug/development setting. Optional substring used to narrow the selected GitHub release asset."
+          },
+          "ifc.trace.server": {
+            "type": "string",
+            "enum": [
+              "off",
+              "messages",
+              "verbose"
+            ],
+            "default": "off",
+            "markdownDescription": "Debug setting. Trace level for IFC language server protocol traffic."
+          }
         }
       }
-    },
+    ],
     "configurationDefaults": {
       "[ifc]": {
         "editor.colorDecorators": false,
