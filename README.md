@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/logo.svg" alt="IFC Language Tools logo" width="96">
+  <img src="resources/logo.png" alt="IFC Language Tools logo" width="96">
 </p>
 
 # IFC Language Support for VS Code
