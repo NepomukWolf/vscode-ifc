@@ -31,7 +31,7 @@ Install from:
 IFC Language Tools combines local editor support with language-server features for:
 
 - Reading IFC files: syntax highlighting, bracket matching, semantic highlighting, hover previews, entity documentation, and derived-value hover.
-- Navigation: go to definition, find references, document highlights, document symbols, Outline, breadcrumbs, and go-to-symbol.
+- Navigation: go to definition, find references, document highlights, and a spatial Outline for IFC projects, spaces, products, breadcrumbs, and go-to-symbol.
 - Validation: schema-aware diagnostics for IFC entity and attribute issues.
 - Editing assistance: signature help, inlay hints, and IFC file scaffold generation.
 - 3D preview: focused element preview without loading the whole model in a separate viewer.

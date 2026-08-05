@@ -8,12 +8,11 @@ Check `ifc.server.path` first. If this setting points to a deleted or moved bina
 
 To recover:
 
-1. Open VS Code Settings.
+1. Use the warning's `Open Settings` button, or open VS Code Settings manually.
 2. Search for `ifc.server.path`.
 3. Clear the setting unless you intentionally use a custom local language-server binary.
 4. Run `IFC: Restart Language Server`.
-5. If needed, run `IFC: Download Language Server`.
-6. Run `IFC: Show Resolved Language Server` to confirm the extension is using the expected binary.
+5. Run `IFC: Show Resolved Language Server` to confirm the extension is using the expected binary.
 
 Do not point `ifc.server.path` at a binary inside VS Code's extension-managed global storage cache. Those downloaded binaries are managed by the extension and may be cleaned up during updates.
 
