@@ -41,7 +41,6 @@ export default defineConfig({
         text: "Reference",
         items: [
           { text: "Development", link: "/development" },
-          { text: "Release and Docs", link: "/release-and-docs" },
         ],
       },
     ],

@@ -10,13 +10,9 @@ Place the cursor on an element and use one of these entry points:
 - use the editor context menu
 - use the `Preview in 3D` CodeLens above an element with geometry
 
-TODO: Replace this placeholder with a screenshot showing the 3D preview panel.
+![3D preview panel](/assets/three-d-preview-panel.png)
 
-![TODO: 3D preview panel screenshot](/assets/three-d-preview-panel.svg)
-
-TODO: Replace this placeholder with a screenshot showing the Preview in 3D CodeLens.
-
-![TODO: 3D preview CodeLens screenshot](/assets/three-d-preview-codelens.svg)
+![Preview in 3D CodeLens](/assets/three-d-preview-codelens.png)
 
 ## Behavior
 
