@@ -126,7 +126,7 @@
           "type": "number",
           "default": 70,
           "minimum": 0.001,
-          "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics and derived-value hover."
+          "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics, derived-value hover, and the spatial Outline."
         },
         "ifc.semanticTokens.enabled": {
           "type": "boolean",
