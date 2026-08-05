@@ -6,25 +6,19 @@ Hover support helps you inspect IFC STEP files without leaving the editor.
 
 Hover over an identifier such as `#12345` to preview the referenced definition.
 
-TODO: Replace this placeholder with a screenshot showing STEP ID hover.
-
-![TODO: STEP ID hover screenshot](/assets/hover-step-id.svg)
+![STEP ID hover preview](/assets/hover-step-id.png)
 
 ## IFC Entity Documentation
 
 Hover over IFC entity names such as `IFCWALL` to view schema documentation from the language server. Entity hover includes a link to the official buildingSMART documentation for the schema version selected for the open file.
 
-TODO: Replace this placeholder with a screenshot showing IFC entity hover documentation.
-
-![TODO: IFC entity hover screenshot](/assets/hover-entity-docs.svg)
+![IFC entity hover documentation](/assets/hover-entity-docs.png)
 
 ## Derived-Value Hover
 
 For supported entities and schemas, hover can include derived values calculated by the language server. This is useful when an IFC attribute is not written directly in the STEP line but can be resolved from schema rules and related data.
 
-TODO: Replace this placeholder with a screenshot showing derived-value hover.
-
-![TODO: Derived-value hover screenshot](/assets/hover-derived-values.svg)
+![Derived-value hover](/assets/hover-derived-value.png)
 
 ## Limitations
 

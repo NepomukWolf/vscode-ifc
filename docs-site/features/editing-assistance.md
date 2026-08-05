@@ -10,9 +10,7 @@ While editing an IFC entity argument list, VS Code can show signature help when 
 
 Parameter documentation can include the expected type, whether the attribute is optional, and whether it may be omitted with `*`.
 
-TODO: Replace this placeholder with a screenshot showing signature help inside an IFC entity argument list.
-
-![TODO: Signature help screenshot](/assets/signature-help.svg)
+![Signature help inside an IFC entity argument list](/assets/signature-help.png)
 
 ## IFC File Scaffold
 
@@ -23,14 +21,6 @@ The extension can generate IFC file scaffold content through two VS Code surface
 
 Both surfaces insert scaffold templates for starting an IFC STEP file. The completions are useful when typing, while the empty-file code actions are useful when starting from a blank document.
 
-TODO: Replace this placeholder with a screenshot showing IFC scaffold completions.
+![IFC scaffold completions](/assets/ifc-scaffold-completion.png)
 
-![TODO: IFC scaffold completion screenshot](/assets/ifc-scaffold-completion.svg)
-
-TODO: Replace this placeholder with a screenshot showing empty-file scaffold source actions.
-
-![TODO: IFC scaffold code action screenshot](/assets/ifc-scaffold-code-action.svg)
-
-## Limitations
-
-Signature help depends on the schema selected for the open file. Scaffold generation is currently limited to the built-in IFC scaffold templates.
+![Empty-file scaffold source actions](/assets/ifc-scaffold-code-action.png)

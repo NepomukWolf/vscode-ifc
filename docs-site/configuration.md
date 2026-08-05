@@ -4,9 +4,7 @@ Most users do not need to change language-server settings. The extension automat
 
 Settings are available for viewer behavior, large-file handling, schema experiments, and advanced debugging.
 
-TODO: Replace this placeholder with a screenshot showing IFC settings in VS Code.
-
-![TODO: Settings screenshot](/assets/settings.svg)
+![IFC settings in VS Code](/assets/settings.png)
 
 ## Viewer
 

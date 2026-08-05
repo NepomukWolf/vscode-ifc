@@ -1,19 +1,15 @@
-# Semantic Highlighting
+# Syntax And Semantic Highlighting
 
-The extension provides TextMate syntax highlighting and can request semantic tokens from the IFC language server.
+The extension provides TextMate grammar support for IFC STEP files and can request range-based semantic tokens from the IFC language server.
 
-Semantic highlighting is enabled by default with:
+The language server uses semantic tokens as a range-based syntax-highlighting surface. This is useful for LSP clients that request semantic tokens independently from editor grammar highlighting.
+
+In VS Code today, semantic tokens do not add much visible value for this extension. When VS Code disables its own TextMate-based syntax highlighting for very large files, it also appears to stop requesting semantic tokens for that document. In that state, the server-side range-based tokens cannot fill the gap.
+
+Semantic tokens are still enabled by default:
 
 ```json
 {
   "ifc.semanticTokens.enabled": true
 }
 ```
-
-TODO: Replace this placeholder with a screenshot showing IFC syntax and semantic highlighting.
-
-![TODO: Semantic highlighting screenshot](/assets/semantic-highlighting.svg)
-
-## Limitations
-
-Theme support varies. Some VS Code themes make semantic tokens more visible than others.

@@ -10,9 +10,7 @@ The language server can report issues such as:
 - invalid enumeration values
 - incorrect cardinalities
 
-TODO: Replace this placeholder with a screenshot showing diagnostics in the editor and Problems view.
-
-![TODO: Diagnostics screenshot](/assets/diagnostics-problems-view.svg)
+![Diagnostics in the editor and Problems view](/assets/diagnostics-problems-view.png)
 
 ## Limitations
 

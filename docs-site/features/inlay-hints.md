@@ -22,10 +22,4 @@ Other useful values are:
 - `"off"`: never show inlay hints
 - `"onUnlessPressed"`: show hints by default and hide them while pressing the modifier key
 
-TODO: Replace this placeholder with a screenshot showing IFC parameter inlay hints.
-
-![TODO: Inlay hints screenshot](/assets/inlay-hints.svg)
-
-## Limitations
-
-Inlay hints depend on the schema selected for the open file. They are editor annotations only and do not modify the IFC file.
+![IFC parameter inlay hints](/assets/inlay-hints.png)

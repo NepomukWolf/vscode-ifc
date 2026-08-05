@@ -6,9 +6,7 @@ The language server provides document symbols for VS Code's Outline view, breadc
 
 Open VS Code's Outline view while editing an IFC STEP file to browse a curated IFC spatial hierarchy. The outline is built from project, spatial, and product relationships rather than showing every raw STEP line as a flat list.
 
-TODO: Replace this placeholder with a screenshot showing the IFC spatial hierarchy in VS Code Outline.
-
-![TODO: Document symbols Outline screenshot](/assets/document-symbols-outline.svg)
+![IFC spatial hierarchy in VS Code Outline](/assets/document-symbols-outline.png)
 
 ## Breadcrumbs and Go to Symbol
 
