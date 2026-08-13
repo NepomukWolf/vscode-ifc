@@ -229,9 +229,9 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.6",
+    "@biomejs/biome": "2.5.7",
     "@types/node": "^26.1.2",
-    "@types/three": "^0.185.1",
+    "@types/three": "^0.185.4",
     "@types/vscode": "1.93.0",
     "@vscode/vsce": "^3.9.2",
     "adm-zip": "^0.6.0",
