@@ -20,6 +20,8 @@ export interface LoadMessage {
   rootName?: string;
   schema?: string;
   fileName: string;
+  /** Workspace-relative source path formatted for display in the viewer HUD. */
+  displayPath: string;
   includedCount: number;
   childCount: number;
   truncated: boolean;

@@ -24,6 +24,7 @@ class Viewer {
   private resizeObserver: ResizeObserver | undefined;
   private animationFrame = 0;
 
+  private hudPath = "";
   private hudTitle = "";
   private hudSub = "";
   private hudStats = "";
@@ -83,8 +84,7 @@ class Viewer {
       const elapsedMs = Math.round(performance.now() - started);
       this.hudStats =
         `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"}` +
-        (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`) +
-        ` · ${elapsedMs} ms`;
+        (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`);
       this.renderChrome();
       post({
         type: "status",
@@ -171,9 +171,9 @@ class Viewer {
   };
 
   private setHud(message: LoadMessage): void {
+    this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
-    const bits = [message.rootName, message.schema, message.fileName].filter(Boolean);
-    this.hudSub = bits.join(" · ");
+    this.hudSub = message.rootName ?? "";
     this.hudStats = "";
     const warnings: string[] = [];
     if (message.childCount > 0) {
@@ -224,6 +224,7 @@ class Viewer {
 
   private templateState(): ViewerTemplateState {
     return {
+      hudPath: this.hudPath,
       hudTitle: this.hudTitle,
       hudSub: this.hudSub,
       hudStats: this.hudStats,

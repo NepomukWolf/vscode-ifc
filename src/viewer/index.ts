@@ -158,6 +158,7 @@ class ViewerController implements vscode.CodeLensProvider {
           rootName: index.nameOf(id),
           schema: sub.schema,
           fileName: path.basename(uri.fsPath),
+          displayPath: vscode.workspace.asRelativePath(uri, false).split(/[\\/]/).join(" › "),
           includedCount: sub.includedIds.length,
           childCount: sub.childCount,
           truncated: sub.truncated,

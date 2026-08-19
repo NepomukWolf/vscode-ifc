@@ -62,7 +62,7 @@ export class IfcViewerPanel {
 
   /** Render a sub-model. Buffers until the webview signals it is ready. */
   load(message: LoadMessage): void {
-    this.panel.title = `IFC 3D: ${message.rootType ?? `#${message.rootId}`}`;
+    this.panel.title = `IFC 3D: ${message.fileName}`;
     if (this.ready) {
       this.post(message);
     } else {

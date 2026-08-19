@@ -1,6 +1,7 @@
 import { html, type TemplateResult } from "lit-html";
 
 export type ViewerTemplateState = {
+  hudPath: string;
   hudTitle: string;
   hudSub: string;
   hudStats: string;
@@ -20,6 +21,7 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
   return html`
     <div class="viewer-canvas" @pointerdown=${actions.onPointerDown} @pointerup=${actions.onPointerUp}></div>
     <div class="hud">
+      <div class="hud-path">${state.hudPath}</div>
       <div class="hud-title">${state.hudTitle}</div>
       <div class="hud-sub">${state.hudSub}</div>
       <div class="hud-stats">${state.hudStats}</div>
