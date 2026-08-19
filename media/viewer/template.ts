@@ -51,6 +51,6 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
     >
       ${state.overlayText}
     </div>
-    <div class="hint">Click to jump to source · double-click to preview · drag to orbit · scroll to zoom</div>
+    <div class="hint">Click to jump to source · double-click to preview selection · drag to orbit · scroll to zoom</div>
   `;
 }

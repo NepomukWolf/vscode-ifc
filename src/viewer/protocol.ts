@@ -56,7 +56,7 @@ export interface PickMessage {
 /** webview -> host: the user double-clicked geometry; preview that element. */
 export interface FocusMessage {
   type: "focus";
-  productId: number;
+  target: PickTarget;
 }
 
 /** webview -> host: progress/outcome of a render. */

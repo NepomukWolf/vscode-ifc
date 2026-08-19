@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./expressId";
 import { LruCache } from "./lruCache";
 import { IfcViewerPanel } from "./panel";
-import { resolvePickSourceId } from "./picking";
+import { resolveFocusSourceId, resolvePickSourceId } from "./picking";
 import { LoadMessage, PickMode, PickTarget } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
 import { extractSubModel } from "./subModel";
@@ -181,7 +181,7 @@ class ViewerController implements vscode.CodeLensProvider {
     if (panel !== this.panel) {
       this.panel = panel;
       panel.onPick((target) => void this.reveal(target));
-      panel.onFocus((expressId) => void this.focus(expressId));
+      panel.onFocus((target) => void this.focus(target));
     }
     panel.load(message);
   }
@@ -242,13 +242,17 @@ class ViewerController implements vscode.CodeLensProvider {
     }
   }
 
-  private async focus(expressId: number): Promise<void> {
+  private async focus(target: PickTarget): Promise<void> {
     const uri = this.lastSourceUri;
     if (!uri) {
       return;
     }
     try {
-      const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
+      const index = await this.getIndex(uri, readConfig().maxFileSizeMb);
+      const sourceId = resolveFocusSourceId(index, target, this.lastPickMode, this.lastPickRemap);
+      if (sourceId === undefined) {
+        return;
+      }
       await this.render(uri, sourceId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -24,7 +24,7 @@ When `ifc.viewer.includeHostedElements` is enabled (the default), previewing a w
 
 Click rendered geometry in the 3D viewer to jump back to its relevant definition in the IFC STEP file.
 
-Picking follows the preview context. In a wall, storey, assembly, or other multi-product preview, each product is selected as a whole. When a single product is previewed directly, its individual geometry parts can be selected to jump to their representation definitions; double-clicking still focuses the owning product.
+Picking follows the preview context. In a wall, storey, assembly, or other multi-product preview, each product is selected as a whole. When a single product is previewed directly, its individual geometry parts can be selected to jump to or preview their representation definitions. Geometry that cannot be previewed independently remains selectable for source navigation.
 
 ## Limitations
 

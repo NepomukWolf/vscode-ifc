@@ -185,7 +185,7 @@ class Viewer {
     }
     const target = await engine.pick(event.clientX, event.clientY);
     if (target) {
-      post({ type: "focus", productId: target.productId });
+      post({ type: "focus", target });
     }
   };
 
