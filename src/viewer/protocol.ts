@@ -24,6 +24,7 @@ export interface LoadMessage {
   displayPath: string;
   includedCount: number;
   childCount: number;
+  hostedCount: number;
   truncated: boolean;
 }
 

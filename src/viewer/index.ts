@@ -31,6 +31,7 @@ const INDEX_CACHE_MAX_ENTRIES = 3;
 
 interface ViewerConfig {
   includeChildren: boolean;
+  includeHostedElements: boolean;
   codeLens: boolean;
   maxFileSizeMb: number;
 }
@@ -39,6 +40,7 @@ function readConfig(): ViewerConfig {
   const c = vscode.workspace.getConfiguration("ifc");
   return {
     includeChildren: c.get<boolean>("viewer.includeChildren", true),
+    includeHostedElements: c.get<boolean>("viewer.includeHostedElements", true),
     codeLens: c.get<boolean>("viewer.codeLens", true),
     maxFileSizeMb: c.get<number>("viewer.maxFileSizeMb", 400),
   };
@@ -146,7 +148,10 @@ class ViewerController implements vscode.CodeLensProvider {
               `or a container (storey/building) that holds some.`,
           );
         }
-        const sub = extractSubModel(index, id, { includeChildren: config.includeChildren });
+        const sub = extractSubModel(index, id, {
+          includeChildren: config.includeChildren,
+          includeHostedElements: config.includeHostedElements,
+        });
         this.lastPickRemap = sub.pickRemap;
         return {
           type: "load",
@@ -161,6 +166,7 @@ class ViewerController implements vscode.CodeLensProvider {
           displayPath: vscode.workspace.asRelativePath(uri, false).split(/[\\/]/).join(" › "),
           includedCount: sub.includedIds.length,
           childCount: sub.childCount,
+          hostedCount: sub.hostedCount,
           truncated: sub.truncated,
         };
       },

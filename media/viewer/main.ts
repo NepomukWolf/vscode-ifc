@@ -28,6 +28,7 @@ class Viewer {
   private hudTitle = "";
   private hudSub = "";
   private hudInfo = "";
+  private hudInfoTitle = "";
   private hudWarn = "";
   private overlayText = "";
   private overlayBusy = false;
@@ -181,10 +182,19 @@ class Viewer {
     this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
     this.hudSub = message.rootName ?? "";
+    const includedElements = message.childCount + message.hostedCount;
     this.hudInfo =
-      message.childCount > 0
-        ? `Includes ${message.childCount} element${message.childCount === 1 ? "" : "s"}`
+      includedElements > 0
+        ? `Includes ${includedElements} element${includedElements === 1 ? "" : "s"}`
         : "";
+    const includedBy: string[] = [];
+    if (message.childCount > 0) {
+      includedBy.push("decomposition descendants (ifc.viewer.includeChildren)");
+    }
+    if (message.hostedCount > 0) {
+      includedBy.push("hosted opening fillings (ifc.viewer.includeHostedElements)");
+    }
+    this.hudInfoTitle = includedBy.length > 0 ? `Includes ${includedBy.join(" and ")}.` : "";
     const warnings: string[] = [];
     if (message.truncated) {
       warnings.push("⚠ extraction truncated (very large element)");
@@ -236,6 +246,7 @@ class Viewer {
       hudTitle: this.hudTitle,
       hudSub: this.hudSub,
       hudInfo: this.hudInfo,
+      hudInfoTitle: this.hudInfoTitle,
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,

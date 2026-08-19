@@ -8,6 +8,7 @@ export type ViewerTemplateState = {
   hudWarn: string;
   overlayText: string;
   overlayBusy: boolean;
+  hudInfoTitle: string;
 };
 
 export type ViewerTemplateActions = {
@@ -32,9 +33,7 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
       <div class="hud-sub">${state.hudSub}</div>
       <div
         class="hud-info"
-        title=${state.hudInfo
-          ? "Includes descendants. Disable ifc.viewer.includeChildren to preview only the selected element."
-          : ""}
+        title=${state.hudInfoTitle}
       >
         ${state.hudInfo}
       </div>

@@ -9,6 +9,7 @@ Settings are available for viewer behavior, large-file handling, schema experime
 ## Viewer
 
 - `ifc.viewer.includeChildren`: include decomposition or assembly children in 3D preview
+- `ifc.viewer.includeHostedElements`: include products that fill host openings, such as doors and windows (openings remain included for correct cut-outs)
 - `ifc.viewer.codeLens`: show `Preview in 3D` CodeLens above elements with geometry
 - `ifc.viewer.maxFileSizeMb`: maximum IFC file size the 3D preview will index
 

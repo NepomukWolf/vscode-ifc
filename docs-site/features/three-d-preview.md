@@ -20,6 +20,8 @@ The extension extracts the selected element's reference closure into a small sub
 
 When `ifc.viewer.includeChildren` is enabled, the preview also includes decomposition or assembly children where available.
 
+When `ifc.viewer.includeHostedElements` is enabled (the default), previewing a wall or another host also renders products that fill its openings, such as doors and windows. Opening geometry is always included so host cut-outs remain correct even when filling products are disabled.
+
 Click an element in the 3D viewer to jump back to the code line where that element is defined in the IFC STEP file.
 
 ## Limitations

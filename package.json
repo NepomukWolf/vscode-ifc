@@ -139,6 +139,11 @@
             "default": true,
             "markdownDescription": "When previewing an element in 3D, also include its decomposition/assembly children (for example a stair's flights or a roof's slabs)."
           },
+          "ifc.viewer.includeHostedElements": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "When previewing a host in 3D, also include products that fill its openings (for example doors and windows). Openings themselves remain included so host cut-outs render correctly."
+          },
           "ifc.viewer.codeLens": {
             "type": "boolean",
             "default": true,
