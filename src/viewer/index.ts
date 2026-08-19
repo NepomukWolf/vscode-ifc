@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./expressId";
+import { LruCache } from "./lruCache";
 import { IfcViewerPanel } from "./panel";
 import { LoadMessage } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
@@ -25,6 +26,8 @@ const LENS_WHOLE_FILE_MAX_LINES = 6000;
 const LENS_VIEWPORT_MARGIN = 200;
 /** Defensive ceiling on lenses returned from one pass. */
 const LENS_MAX = 2000;
+/** Keep memory bounded while allowing quick switching between a few open models. */
+const INDEX_CACHE_MAX_ENTRIES = 3;
 
 interface ViewerConfig {
   includeChildren: boolean;
@@ -53,7 +56,7 @@ interface CacheEntry {
  * the webview. Also serves CodeLenses and pick-to-reveal.
  */
 class ViewerController implements vscode.CodeLensProvider {
-  private readonly indexCache = new Map<string, CacheEntry>();
+  private readonly indexCache = new LruCache<string, CacheEntry>(INDEX_CACHE_MAX_ENTRIES);
   private panel: IfcViewerPanel | undefined;
   private lastSourceUri: vscode.Uri | undefined;
   /** Rendered-id -> source-id for the current preview (see SubModelResult.pickRemap). */
@@ -86,6 +89,12 @@ class ViewerController implements vscode.CodeLensProvider {
       clearTimeout(this.lensRefreshTimer);
     }
     this.lensRefreshTimer = setTimeout(() => this.lensChanged.fire(), 200);
+  }
+
+  onDocumentClosed(document: vscode.TextDocument): void {
+    if (document.uri.scheme === "file") {
+      this.indexCache.delete(document.uri.fsPath);
+    }
   }
 
   /** Entry point for the `ifc.viewElement` command. */
@@ -176,6 +185,9 @@ class ViewerController implements vscode.CodeLensProvider {
     if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
       return cached.index;
     }
+    if (cached) {
+      this.indexCache.delete(uri.fsPath);
+    }
     if (stat.size > maxFileSizeMb * MB) {
       throw new Error(
         `File is ${(stat.size / MB).toFixed(0)} MB, above the ${maxFileSizeMb} MB preview limit ` +
@@ -193,21 +205,27 @@ class ViewerController implements vscode.CodeLensProvider {
     if (!uri) {
       return;
     }
-    // A picked synthetic wrapper resolves back to the real geometry item it previews.
-    const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
-    const cached = uri.scheme === "file" ? this.indexCache.get(uri.fsPath) : undefined;
-    const pos = cached?.index.positionOf(sourceId);
-    const editor = await vscode.window.showTextDocument(uri, {
-      viewColumn: vscode.ViewColumn.One,
-      preserveFocus: false,
-    });
-    if (pos) {
-      const position = new vscode.Position(pos.line, pos.character);
-      editor.selection = new vscode.Selection(position, position);
-      editor.revealRange(
-        new vscode.Range(position, position),
-        vscode.TextEditorRevealType.InCenter,
-      );
+    try {
+      // A picked synthetic wrapper resolves back to the real geometry item it previews.
+      const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
+      const index = await this.getIndex(uri, readConfig().maxFileSizeMb);
+      const pos = index.positionOf(sourceId);
+      const editor = await vscode.window.showTextDocument(uri, {
+        viewColumn: vscode.ViewColumn.One,
+        preserveFocus: false,
+      });
+      if (pos) {
+        const position = new vscode.Position(pos.line, pos.character);
+        editor.selection = new vscode.Selection(position, position);
+        editor.revealRange(
+          new vscode.Range(position, position),
+          vscode.TextEditorRevealType.InCenter,
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.error(`IFC 3D source reveal failed: ${message}`);
+      void vscode.window.showErrorMessage(`IFC 3D source reveal failed: ${message}`);
     }
   }
 
@@ -312,6 +330,7 @@ export function registerViewer(
     vscode.window.onDidChangeTextEditorVisibleRanges((event) =>
       controller.onVisibleRangesChanged(event.textEditor),
     ),
+    vscode.workspace.onDidCloseTextDocument((document) => controller.onDocumentClosed(document)),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("ifc.viewer")) {
         controller.configChanged();
