@@ -10,6 +10,7 @@
  * Pure Node (no `vscode`): unit-testable against `test-files/`.
  */
 import { REL_FILLS, REL_VOIDS, STYLED_ITEM, StepFileIndex, collectRefs } from "./stepIndex";
+import type { PickMode } from "./protocol";
 
 export interface SubModelOptions {
   /** Include decomposition/assembly descendants (IfcRelAggregates/IfcRelNests). */
@@ -30,6 +31,8 @@ export interface SubModelResult {
   rootId: number;
   /** Product/element ids intended for rendering, excluding helper closure ids. */
   renderIds: number[];
+  /** Source-navigation granularity appropriate for this preview context. */
+  pickMode: PickMode;
   rootType: string | undefined;
   schema: string | undefined;
   includedIds: number[];
@@ -276,11 +279,17 @@ export function extractSubModel(
 
   const includedIds = [...included].sort((a, b) => a - b);
   const ifcBytes = assemble(index, includedIds, extraLines);
+  const soleRenderedId = renderIds.size === 1 ? renderIds.values().next().value : undefined;
+  const pickMode: PickMode =
+    soleRenderedId !== undefined && (pickRemap.get(soleRenderedId) ?? soleRenderedId) === rootId
+      ? "geometry"
+      : "product";
 
   return {
     ifcBytes,
     rootId,
     renderIds: [...renderIds].sort((a, b) => a - b),
+    pickMode,
     rootType: index.getType(rootId),
     schema: index.schema,
     includedIds,

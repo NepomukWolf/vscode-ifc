@@ -3,7 +3,12 @@ import { render as renderHtml } from "lit-html";
 import type { RenderEngine } from "./engine";
 import { ThatOpenEngine } from "./thatopen-engine";
 import { viewerTemplate, type ViewerTemplateState } from "./template";
-import type { HostToWebview, LoadMessage, WebviewToHost } from "../../src/viewer/protocol";
+import type {
+  HostToWebview,
+  LoadMessage,
+  PickMode,
+  WebviewToHost,
+} from "../../src/viewer/protocol";
 
 declare function acquireVsCodeApi(): { postMessage(message: WebviewToHost): void };
 
@@ -23,12 +28,14 @@ class Viewer {
   private activeLoadStage = "";
   private resizeObserver: ResizeObserver | undefined;
   private animationFrame = 0;
+  private currentPickMode: PickMode = "product";
 
   private hudPath = "";
   private hudTitle = "";
   private hudSub = "";
   private hudInfo = "";
   private hudInfoTitle = "";
+  private hudSelection = "";
   private hudWarn = "";
   private overlayText = "";
   private overlayBusy = false;
@@ -66,6 +73,7 @@ class Viewer {
         bytes: new Uint8Array(message.ifcBytes),
         rootId: message.rootId,
         renderIds: message.renderIds,
+        pickMode: message.pickMode,
       });
       if (seq !== this.renderSeq) {
         return;
@@ -161,9 +169,12 @@ class Viewer {
     if (Number.isFinite(downX) && Math.hypot(event.clientX - downX, event.clientY - downY) > 5) {
       return;
     }
-    const expressId = await engine.pick(event.clientX, event.clientY);
-    if (typeof expressId === "number") {
-      post({ type: "pick", expressId });
+    const target = await engine.pick(event.clientX, event.clientY);
+    if (target) {
+      this.hudSelection =
+        this.currentPickMode === "geometry" ? `Selected geometry #${target.geometryId}` : "";
+      this.renderChrome();
+      post({ type: "pick", target });
     }
   };
 
@@ -172,16 +183,18 @@ class Viewer {
     if (!engine) {
       return;
     }
-    const expressId = await engine.pick(event.clientX, event.clientY);
-    if (typeof expressId === "number") {
-      post({ type: "focus", expressId });
+    const target = await engine.pick(event.clientX, event.clientY);
+    if (target) {
+      post({ type: "focus", productId: target.productId });
     }
   };
 
   private setHud(message: LoadMessage): void {
+    this.currentPickMode = message.pickMode;
     this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
     this.hudSub = message.rootName ?? "";
+    this.hudSelection = "";
     const includedElements = message.childCount + message.hostedCount;
     this.hudInfo =
       includedElements > 0
@@ -247,6 +260,7 @@ class Viewer {
       hudSub: this.hudSub,
       hudInfo: this.hudInfo,
       hudInfoTitle: this.hudInfoTitle,
+      hudSelection: this.hudSelection,
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,

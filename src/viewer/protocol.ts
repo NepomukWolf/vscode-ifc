@@ -5,6 +5,16 @@
  */
 
 /** Host -> webview: render this self-contained sub-model. */
+export type PickMode = "product" | "geometry";
+
+/** Both identities carried by a rendered geometry part. */
+export interface PickTarget {
+  /** The IFC product that owns the rendered geometry. */
+  productId: number;
+  /** The representation item web-ifc tessellated for this mesh. */
+  geometryId: number;
+}
+
 export interface LoadMessage {
   type: "load";
   /** Correlates the async render result with this request. */
@@ -16,6 +26,8 @@ export interface LoadMessage {
   rootId: number;
   /** IFC express ids that should be rendered as geometry, preserving source ids. */
   renderIds: number[];
+  /** Whether picks resolve to whole products or individual representation items. */
+  pickMode: PickMode;
   rootType?: string;
   rootName?: string;
   schema?: string;
@@ -38,13 +50,13 @@ export interface ReadyMessage {
 /** webview -> host: the user clicked geometry; jump to its source line. */
 export interface PickMessage {
   type: "pick";
-  expressId: number;
+  target: PickTarget;
 }
 
 /** webview -> host: the user double-clicked geometry; preview that element. */
 export interface FocusMessage {
   type: "focus";
-  expressId: number;
+  productId: number;
 }
 
 /** webview -> host: progress/outcome of a render. */

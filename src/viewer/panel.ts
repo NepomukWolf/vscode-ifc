@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
-import { HostToWebview, LoadMessage, StatusMessage, WebviewToHost } from "./protocol";
+import { HostToWebview, LoadMessage, PickTarget, StatusMessage, WebviewToHost } from "./protocol";
 
 /**
  * Owns the single "IFC 3D Preview" webview panel: lifecycle, HTML/CSP, and the
@@ -15,8 +15,8 @@ export class IfcViewerPanel {
   private pending: LoadMessage | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
-  private readonly pickEmitter = new vscode.EventEmitter<number>();
-  /** Fires with the express id the user clicked in the 3D scene. */
+  private readonly pickEmitter = new vscode.EventEmitter<PickTarget>();
+  /** Fires with the product and geometry ids clicked in the 3D scene. */
   readonly onPick = this.pickEmitter.event;
 
   private readonly focusEmitter = new vscode.EventEmitter<number>();
@@ -89,10 +89,10 @@ export class IfcViewerPanel {
         }
         break;
       case "pick":
-        this.pickEmitter.fire(message.expressId);
+        this.pickEmitter.fire(message.target);
         break;
       case "focus":
-        this.focusEmitter.fire(message.expressId);
+        this.focusEmitter.fire(message.productId);
         break;
       case "status":
         this.statusEmitter.fire(message);

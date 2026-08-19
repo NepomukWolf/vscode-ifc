@@ -1,6 +1,7 @@
 import * as OBC from "@thatopen/components";
 import * as WebIFC from "web-ifc";
 import * as THREE from "three";
+import type { PickMode, PickTarget } from "../../src/viewer/protocol";
 import type { EngineOptions, RenderEngine, RenderLoad, RenderStats } from "./engine";
 
 function wasmBase(): string {
@@ -53,7 +54,9 @@ export class ThatOpenEngine implements RenderEngine {
   private modelGroup: THREE.Group | undefined;
   private readonly geometryCache = new Map<number, THREE.BufferGeometry>();
   private readonly materialCache = new Map<string, THREE.Material>();
-  private selected: { mesh: THREE.Mesh; material: THREE.Material } | undefined;
+  private selected: Array<{ mesh: THREE.Mesh; material: THREE.Material }> = [];
+  private selectionMaterial: THREE.Material | undefined;
+  private pickMode: PickMode = "product";
   private sequence = 0;
   private readonly ready: Promise<void>;
 
@@ -125,6 +128,7 @@ export class ThatOpenEngine implements RenderEngine {
 
   async load(load: RenderLoad): Promise<RenderStats> {
     const renderIds = load.renderIds.length > 0 ? load.renderIds : [load.rootId];
+    this.pickMode = load.pickMode;
     this.log(`load: waiting for setup (${load.bytes.byteLength.toLocaleString()} bytes, ${renderIds.length} render id${renderIds.length === 1 ? "" : "s"})`);
     await this.ready;
     const api = this.ifcApi;
@@ -182,7 +186,8 @@ export class ThatOpenEngine implements RenderEngine {
         const mesh = new THREE.Mesh(geometry, material);
         transform.fromArray(placement.flatTransformation);
         mesh.applyMatrix4(transform);
-        mesh.userData.expressID = expressID;
+        mesh.userData.productId = expressID;
+        mesh.userData.geometryId = placement.geometryExpressID;
         group.add(mesh);
         meshCount += 1;
         const index = geometry.getIndex();
@@ -295,7 +300,7 @@ export class ThatOpenEngine implements RenderEngine {
     await this.fit();
   }
 
-  async pick(clientX: number, clientY: number): Promise<number | undefined> {
+  async pick(clientX: number, clientY: number): Promise<PickTarget | undefined> {
     if (!this.modelGroup) {
       return undefined;
     }
@@ -307,28 +312,46 @@ export class ThatOpenEngine implements RenderEngine {
       return undefined;
     }
     const mesh = hit.object as THREE.Mesh;
-    const expressID = mesh.userData.expressID as number | undefined;
+    const productId = mesh.userData.productId as number | undefined;
+    const geometryId = mesh.userData.geometryId as number | undefined;
+    if (productId === undefined || geometryId === undefined) {
+      return undefined;
+    }
     this.applySelection(mesh);
     this.renderer.needsUpdate = true;
-    return expressID;
+    return { productId, geometryId };
   }
 
   private applySelection(mesh: THREE.Mesh): void {
-    const original = mesh.material as THREE.Material;
-    mesh.material = new THREE.MeshLambertMaterial({
+    const productId = mesh.userData.productId as number | undefined;
+    const meshes =
+      this.pickMode === "product" && productId !== undefined && this.modelGroup
+        ? this.modelGroup.children.filter(
+            (child): child is THREE.Mesh =>
+              child instanceof THREE.Mesh && child.userData.productId === productId,
+          )
+        : [mesh];
+    this.selectionMaterial = new THREE.MeshLambertMaterial({
       color: new THREE.Color(SELECTION_COLOR),
       side: THREE.DoubleSide,
     });
-    this.selected = { mesh, material: original };
+    this.selected = meshes.map((selectedMesh) => {
+      const material = selectedMesh.material as THREE.Material;
+      selectedMesh.material = this.selectionMaterial as THREE.Material;
+      return { mesh: selectedMesh, material };
+    });
   }
 
   private clearSelection(): void {
-    if (!this.selected) {
+    if (this.selected.length === 0) {
       return;
     }
-    (this.selected.mesh.material as THREE.Material).dispose();
-    this.selected.mesh.material = this.selected.material;
-    this.selected = undefined;
+    for (const selected of this.selected) {
+      selected.mesh.material = selected.material;
+    }
+    this.selected = [];
+    this.selectionMaterial?.dispose();
+    this.selectionMaterial = undefined;
   }
 
   resize(_width: number, _height: number): void {

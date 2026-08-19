@@ -9,6 +9,7 @@ export type ViewerTemplateState = {
   overlayText: string;
   overlayBusy: boolean;
   hudInfoTitle: string;
+  hudSelection: string;
 };
 
 export type ViewerTemplateActions = {
@@ -31,6 +32,7 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
       <div class="hud-path">${state.hudPath}</div>
       <div class="hud-title">${state.hudTitle}</div>
       <div class="hud-sub">${state.hudSub}</div>
+      <div class="hud-selection">${state.hudSelection}</div>
       <div
         class="hud-info"
         title=${state.hudInfoTitle}

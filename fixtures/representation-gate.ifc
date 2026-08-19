@@ -101,5 +101,8 @@ DATA;
 #1140=IFCELEMENTASSEMBLY('host-assembly',$,'Host assembly',$,$,#1141,$,$,$,$);
 #1141=IFCLOCALPLACEMENT($,$);
 #1142=IFCRELAGGREGATES('host-child',$,$,$,#1140,(#100));
+#1150=IFCELEMENTASSEMBLY('nested-outer',$,'Nested outer',$,$,#1151,$,$,$,$);
+#1151=IFCLOCALPLACEMENT($,$);
+#1152=IFCRELNESTS('nested-child',$,$,$,#1150,(#1140));
 ENDSEC;
 END-ISO-10303-21;
