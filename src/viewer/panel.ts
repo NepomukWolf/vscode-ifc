@@ -19,6 +19,10 @@ export class IfcViewerPanel {
   /** Fires with the express id the user clicked in the 3D scene. */
   readonly onPick = this.pickEmitter.event;
 
+  private readonly focusEmitter = new vscode.EventEmitter<number>();
+  /** Fires with the express id the user double-clicked in the 3D scene. */
+  readonly onFocus = this.focusEmitter.event;
+
   private readonly statusEmitter = new vscode.EventEmitter<StatusMessage>();
   readonly onStatus = this.statusEmitter.event;
 
@@ -87,6 +91,9 @@ export class IfcViewerPanel {
       case "pick":
         this.pickEmitter.fire(message.expressId);
         break;
+      case "focus":
+        this.focusEmitter.fire(message.expressId);
+        break;
       case "status":
         this.statusEmitter.fire(message);
         break;
@@ -135,6 +142,7 @@ export class IfcViewerPanel {
   private dispose(): void {
     IfcViewerPanel.instance = undefined;
     this.pickEmitter.dispose();
+    this.focusEmitter.dispose();
     this.statusEmitter.dispose();
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();

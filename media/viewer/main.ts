@@ -166,6 +166,17 @@ class Viewer {
     }
   };
 
+  private readonly onDoubleClick = async (event: MouseEvent): Promise<void> => {
+    const engine = this.currentEngine();
+    if (!engine) {
+      return;
+    }
+    const expressId = await engine.pick(event.clientX, event.clientY);
+    if (typeof expressId === "number") {
+      post({ type: "focus", expressId });
+    }
+  };
+
   private setHud(message: LoadMessage): void {
     this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
@@ -211,6 +222,7 @@ class Viewer {
       viewerTemplate(this.templateState(), {
         onPointerDown: this.onPointerDown,
         onPointerUp: this.onPointerUp,
+        onDoubleClick: this.onDoubleClick,
         onFit: this.fit,
         onReset: this.reset,
       }),

@@ -171,6 +171,7 @@ class ViewerController implements vscode.CodeLensProvider {
     if (panel !== this.panel) {
       this.panel = panel;
       panel.onPick((expressId) => void this.reveal(expressId));
+      panel.onFocus((expressId) => void this.focus(expressId));
     }
     panel.load(message);
   }
@@ -227,6 +228,21 @@ class ViewerController implements vscode.CodeLensProvider {
       const message = error instanceof Error ? error.message : String(error);
       this.output.error(`IFC 3D source reveal failed: ${message}`);
       void vscode.window.showErrorMessage(`IFC 3D source reveal failed: ${message}`);
+    }
+  }
+
+  private async focus(expressId: number): Promise<void> {
+    const uri = this.lastSourceUri;
+    if (!uri) {
+      return;
+    }
+    try {
+      const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
+      await this.render(uri, sourceId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.error(`IFC 3D focus failed: ${message}`);
+      void vscode.window.showErrorMessage(`IFC 3D focus failed: ${message}`);
     }
   }
 

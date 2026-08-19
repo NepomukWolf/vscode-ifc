@@ -13,13 +13,19 @@ export type ViewerTemplateState = {
 export type ViewerTemplateActions = {
   onPointerDown(event: PointerEvent): void;
   onPointerUp(event: PointerEvent): void | Promise<void>;
+  onDoubleClick(event: MouseEvent): void | Promise<void>;
   onFit(): void;
   onReset(): void;
 };
 
 export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTemplateActions): TemplateResult {
   return html`
-    <div class="viewer-canvas" @pointerdown=${actions.onPointerDown} @pointerup=${actions.onPointerUp}></div>
+    <div
+      class="viewer-canvas"
+      @pointerdown=${actions.onPointerDown}
+      @pointerup=${actions.onPointerUp}
+      @dblclick=${actions.onDoubleClick}
+    ></div>
     <div class="hud">
       <div class="hud-path">${state.hudPath}</div>
       <div class="hud-title">${state.hudTitle}</div>
@@ -44,6 +50,6 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
     >
       ${state.overlayText}
     </div>
-    <div class="hint">Click geometry to jump to its source line · drag to orbit · scroll to zoom</div>
+    <div class="hint">Click to jump to source · double-click to preview · drag to orbit · scroll to zoom</div>
   `;
 }

@@ -40,6 +40,12 @@ export interface PickMessage {
   expressId: number;
 }
 
+/** webview -> host: the user double-clicked geometry; preview that element. */
+export interface FocusMessage {
+  type: "focus";
+  expressId: number;
+}
+
 /** webview -> host: progress/outcome of a render. */
 export interface StatusMessage {
   type: "status";
@@ -58,4 +64,4 @@ export interface LogMessage {
   message: string;
 }
 
-export type WebviewToHost = ReadyMessage | PickMessage | StatusMessage | LogMessage;
+export type WebviewToHost = ReadyMessage | PickMessage | FocusMessage | StatusMessage | LogMessage;
