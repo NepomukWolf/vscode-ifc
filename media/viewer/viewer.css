@@ -76,10 +76,13 @@ body {
   margin-top: 2px;
 }
 
-.hud-stats {
+.hud-info {
   opacity: 0.7;
-  margin-top: 6px;
-  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.hud-info:empty {
+  display: none;
 }
 
 .hud-warn {

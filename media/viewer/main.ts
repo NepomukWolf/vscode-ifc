@@ -27,7 +27,7 @@ class Viewer {
   private hudPath = "";
   private hudTitle = "";
   private hudSub = "";
-  private hudStats = "";
+  private hudInfo = "";
   private hudWarn = "";
   private overlayText = "";
   private overlayBusy = false;
@@ -82,10 +82,6 @@ class Viewer {
 
       this.setOverlay("", false);
       const elapsedMs = Math.round(performance.now() - started);
-      this.hudStats =
-        `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"}` +
-        (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`);
-      this.renderChrome();
       post({
         type: "status",
         token: message.token,
@@ -174,11 +170,11 @@ class Viewer {
     this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
     this.hudSub = message.rootName ?? "";
-    this.hudStats = "";
+    this.hudInfo =
+      message.childCount > 0
+        ? `Includes ${message.childCount} element${message.childCount === 1 ? "" : "s"}`
+        : "";
     const warnings: string[] = [];
-    if (message.childCount > 0) {
-      warnings.push(`+${message.childCount} child element${message.childCount === 1 ? "" : "s"}`);
-    }
     if (message.truncated) {
       warnings.push("⚠ extraction truncated (very large element)");
     }
@@ -227,7 +223,7 @@ class Viewer {
       hudPath: this.hudPath,
       hudTitle: this.hudTitle,
       hudSub: this.hudSub,
-      hudStats: this.hudStats,
+      hudInfo: this.hudInfo,
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,

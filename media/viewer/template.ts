@@ -4,7 +4,7 @@ export type ViewerTemplateState = {
   hudPath: string;
   hudTitle: string;
   hudSub: string;
-  hudStats: string;
+  hudInfo: string;
   hudWarn: string;
   overlayText: string;
   overlayBusy: boolean;
@@ -24,7 +24,7 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
       <div class="hud-path">${state.hudPath}</div>
       <div class="hud-title">${state.hudTitle}</div>
       <div class="hud-sub">${state.hudSub}</div>
-      <div class="hud-stats">${state.hudStats}</div>
+      <div class="hud-info">${state.hudInfo}</div>
       <div class="hud-warn">${state.hudWarn}</div>
     </div>
     <div class="toolbar">
