@@ -27,7 +27,7 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
       <div
         class="hud-info"
         title=${state.hudInfo
-          ? "Descendants are included because ifc.viewer.includeChildren is enabled. Disable that setting to preview only the selected element."
+          ? "Includes descendants. Disable ifc.viewer.includeChildren to preview only the selected element."
           : ""}
       >
         ${state.hudInfo}
