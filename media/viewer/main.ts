@@ -1,7 +1,7 @@
 import "./viewer.css";
 import { render as renderHtml } from "lit-html";
 import type { RenderEngine } from "./engine";
-import { ThatOpenEngine } from "./thatopen-engine";
+import { IfcLiteEngine } from "./ifc-lite-engine";
 import { viewerTemplate, type ViewerTemplateState } from "./template";
 import type {
   HostToWebview,
@@ -80,7 +80,8 @@ class Viewer {
     try {
       const engine = this.getEngine();
       const stats = await engine.load({
-        bytes: new Uint8Array(message.ifcBytes),
+        modelKey: message.modelKey,
+        bytes: message.ifcBytes ? new Uint8Array(message.ifcBytes) : undefined,
         rootId: message.rootId,
         renderIds: message.renderIds,
         pickMode: message.pickMode,
@@ -124,7 +125,7 @@ class Viewer {
     if (this.engine) {
       return this.engine;
     }
-    const engine = new ThatOpenEngine(this.canvasHost, {
+    const engine = new IfcLiteEngine(this.canvasHost, {
       log: (message) => this.logEngine(message),
     });
     this.engine = engine;
@@ -194,7 +195,9 @@ class Viewer {
     const target = await engine.pick(event.clientX, event.clientY);
     if (target) {
       this.hudSelection =
-        this.currentPickMode === "geometry" ? `Selected geometry #${target.geometryId}` : "";
+        this.currentPickMode === "geometry" && target.geometryId !== undefined
+          ? `Selected geometry #${target.geometryId}`
+          : "";
       this.renderChrome();
       post({ type: "pick", target });
     }

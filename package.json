@@ -153,7 +153,7 @@
             "type": "number",
             "default": 400,
             "minimum": 1,
-            "markdownDescription": "Maximum IFC file size (MiB) the 3D preview will index. Only the selected element is rendered, but the file is scanned once to extract it."
+            "markdownDescription": "Maximum IFC file size (MiB) the experimental 3D preview will index and load. The complete current model is retained by the preview panel; focused elements are shown with an ifc-lite isolation filter."
           }
         }
       },
@@ -235,20 +235,19 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
+    "@ifc-lite/geometry": "^3.8.3",
+    "@ifc-lite/renderer": "^1.48.1",
     "@types/node": "^26.1.2",
-    "@types/three": "^0.185.1",
     "@types/vscode": "1.93.0",
     "@vscode/vsce": "^3.9.2",
+    "@webgpu/types": "^0.1.71",
     "adm-zip": "^0.6.0",
     "esbuild": "^0.28.1",
     "tar": "^7.5.20",
-    "three": "^0.185.1",
     "typescript": "^7.0.2",
-    "vscode-languageclient": "^10.1.0",
-    "web-ifc": "^0.0.77"
+    "vscode-languageclient": "^10.1.0"
   },
   "dependencies": {
-    "@thatopen/components": "^3.4.8",
     "lit-html": "^3.3.3"
   }
 }

@@ -9,7 +9,7 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": []
+    "types": ["@webgpu/types"]
   },
   "include": ["**/*.ts"]
 }

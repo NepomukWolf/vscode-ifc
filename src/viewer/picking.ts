@@ -8,7 +8,11 @@ export function resolvePickSourceId(
   pickMode: PickMode,
   pickRemap: ReadonlyMap<number, number>,
 ): number {
-  if (pickMode === "geometry" && index.hasId(target.geometryId)) {
+  if (
+    pickMode === "geometry" &&
+    target.geometryId !== undefined &&
+    index.hasId(target.geometryId)
+  ) {
     return target.geometryId;
   }
   return pickRemap.get(target.productId) ?? target.productId;
@@ -22,7 +26,9 @@ export function resolveFocusSourceId(
   pickRemap: ReadonlyMap<number, number>,
 ): number | undefined {
   if (pickMode === "geometry") {
-    return index.isPreviewable(target.geometryId, false) ? target.geometryId : undefined;
+    return target.geometryId !== undefined && index.isPreviewable(target.geometryId, false)
+      ? target.geometryId
+      : undefined;
   }
   return pickRemap.get(target.productId) ?? target.productId;
 }

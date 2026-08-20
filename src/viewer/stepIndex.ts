@@ -186,6 +186,14 @@ export class StepFileIndex {
     return { instanceCount: this.instanceCount, schema: this.schema, projectId: this.projectId };
   }
 
+  /** Exact-sized copy of the complete IFC bytes for the resident full-model viewer. */
+  fullIfcBytes(): ArrayBuffer {
+    return this.buf.buffer.slice(
+      this.buf.byteOffset,
+      this.buf.byteOffset + this.buf.byteLength,
+    ) as ArrayBuffer;
+  }
+
   hasId(id: number): boolean {
     return this.startById.has(id);
   }

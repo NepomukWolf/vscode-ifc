@@ -4,27 +4,28 @@
  * can share it.
  */
 
-/** Host -> webview: render this self-contained sub-model. */
+/** Preview granularity retained for compatibility with legacy pick resolution. */
 export type PickMode = "product" | "geometry";
 
-/** Both identities carried by a rendered geometry part. */
+/** Source identities exposed by a rendered pick. */
 export interface PickTarget {
   /** The IFC product that owns the rendered geometry. */
   productId: number;
-  /** The representation item web-ifc tessellated for this mesh. */
-  geometryId: number;
+  /** The originating representation item, when a renderer exposes it. */
+  geometryId?: number;
 }
 
 export interface LoadMessage {
   type: "load";
   /** Correlates the async render result with this request. */
   token: number;
-  /** The self-contained sub-model as raw STEP bytes. An ArrayBuffer so it survives
-   *  `webview.postMessage` structured cloning as binary (a Buffer/Uint8Array does
-   *  not — it arrives as a plain object without `.subarray`). */
-  ifcBytes: ArrayBuffer;
+  /** Full IFC bytes. An ArrayBuffer survives webview structured cloning as binary. */
+  /** Stable source + revision identity of the full model retained by the panel. */
+  modelKey: string;
+  /** Present only when the panel must load or replace its resident model. */
+  ifcBytes?: ArrayBuffer;
   rootId: number;
-  /** IFC express ids that should be rendered as geometry, preserving source ids. */
+  /** IFC product ids to show through ifc-lite's isolation filter. */
   renderIds: number[];
   /** Whether picks resolve to whole products or individual representation items. */
   pickMode: PickMode;

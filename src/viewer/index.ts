@@ -6,9 +6,9 @@ import { LinearHistory } from "./linearHistory";
 import { LruCache } from "./lruCache";
 import { IfcViewerPanel } from "./panel";
 import { resolveFocusSourceId, resolvePickSourceId } from "./picking";
+import { resolvePreviewSelection } from "./previewSelection";
 import { LoadMessage, PickMode, PickTarget } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
-import { extractSubModel } from "./subModel";
 
 const MB = 1024 * 1024;
 
@@ -57,13 +57,14 @@ function readConfig(): ViewerConfig {
 interface CacheEntry {
   mtimeMs: number;
   size: number;
+  modelKey: string;
   index: StepFileIndex;
 }
 
 /**
  * Coordinates the 3D preview: resolves the element under the cursor, builds (and
- * caches) a STEP index, extracts a tiny self-contained sub-model, and hands it to
- * the webview. Also serves CodeLenses and pick-to-reveal.
+ * caches) a STEP index, resolves product ids for ifc-lite isolation, and hands the
+ * full model to the webview once. Also serves CodeLenses and pick-to-reveal.
  */
 class ViewerController implements vscode.CodeLensProvider {
   private readonly indexCache = new LruCache<string, CacheEntry>(INDEX_CACHE_MAX_ENTRIES);
@@ -148,47 +149,6 @@ class ViewerController implements vscode.CodeLensProvider {
 
   private async render(uri: vscode.Uri, id: number): Promise<void> {
     const config = readConfig();
-    const message = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: "IFC 3D: preparing preview…" },
-      async (): Promise<LoadMessage> => {
-        const index = await this.getIndex(uri, config.maxFileSizeMb);
-        if (!index.hasId(id)) {
-          throw new Error(`#${id} is not defined in ${path.basename(uri.fsPath)}.`);
-        }
-        if (!index.isPreviewable(id, config.includeChildren)) {
-          const type = index.getType(id) ?? "element";
-          throw new Error(
-            `#${id} (${type}) has no renderable geometry — pick an element with geometry, ` +
-              `or a container (storey/building) that holds some.`,
-          );
-        }
-        const sub = extractSubModel(index, id, {
-          includeChildren: config.includeChildren,
-          includeHostedElements: config.includeHostedElements,
-        });
-        this.lastPickRemap = sub.pickRemap;
-        this.lastPickMode = sub.pickMode;
-        return {
-          type: "load",
-          token: ++this.token,
-          ifcBytes: sub.ifcBytes,
-          rootId: sub.rootId,
-          renderIds: sub.renderIds,
-          pickMode: sub.pickMode,
-          rootType: sub.rootType,
-          rootName: index.nameOf(id),
-          schema: sub.schema,
-          fileName: path.basename(uri.fsPath),
-          displayPath: vscode.workspace.asRelativePath(uri, false).split(/[\\/]/).join(" › "),
-          includedCount: sub.includedIds.length,
-          childCount: sub.childCount,
-          hostedCount: sub.hostedCount,
-          truncated: sub.truncated,
-        };
-      },
-    );
-
-    this.lastSourceUri = uri;
     const panel = IfcViewerPanel.show(this.context.extensionUri, this.output);
     if (panel !== this.panel) {
       this.history.clear();
@@ -198,7 +158,59 @@ class ViewerController implements vscode.CodeLensProvider {
       panel.onBack(() => void this.navigateHistory("back"));
       panel.onForward(() => void this.navigateHistory("forward"));
     }
-    panel.load(message);
+    const message = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "IFC 3D: preparing preview…" },
+      async (): Promise<LoadMessage> => {
+        const index = await this.getIndex(uri, config.maxFileSizeMb);
+        if (!index.hasId(id)) {
+          throw new Error(`#${id} is not defined in ${path.basename(uri.fsPath)}.`);
+        }
+        if (!this.isIfcLitePreviewable(index, id, config.includeChildren)) {
+          const type = index.getType(id) ?? "element";
+          throw new Error(
+            `#${id} (${type}) has no renderable geometry — pick an element with geometry, ` +
+              `or a container (storey/building) that holds some.`,
+          );
+        }
+        const selection = resolvePreviewSelection(index, id, {
+          includeChildren: config.includeChildren,
+          includeHostedElements: config.includeHostedElements,
+        });
+        if (selection.renderIds.length === 0) {
+          throw new Error(
+            `#${id} cannot be isolated through ifc-lite's product-id renderer. ` +
+              "Bare representation-item previews are an experimental feature gap.",
+          );
+        }
+        this.lastPickRemap = new Map();
+        this.lastPickMode = "product";
+        const cache = await this.getCacheEntry(uri, config.maxFileSizeMb);
+        return {
+          type: "load",
+          token: ++this.token,
+          modelKey: cache.modelKey,
+          ifcBytes: panel.hasResidentModel(cache.modelKey) ? undefined : index.fullIfcBytes(),
+          rootId: id,
+          renderIds: selection.renderIds,
+          pickMode: "product",
+          rootType: index.getType(id),
+          rootName: index.nameOf(id),
+          schema: index.schema,
+          fileName: path.basename(uri.fsPath),
+          displayPath: vscode.workspace.asRelativePath(uri, false).split(/[\\/]/).join(" › "),
+          includedCount: selection.renderIds.length,
+          childCount: selection.childCount,
+          hostedCount: selection.hostedCount,
+          truncated: false,
+        };
+      },
+    );
+
+    this.lastSourceUri = uri;
+    const status = await panel.load(message);
+    if (status.state === "error") {
+      throw new Error(status.message ?? "ifc-lite failed to render the preview.");
+    }
   }
 
   private async navigateNew(uri: vscode.Uri, id: number): Promise<void> {
@@ -247,15 +259,25 @@ class ViewerController implements vscode.CodeLensProvider {
   }
 
   private async getIndex(uri: vscode.Uri, maxFileSizeMb: number): Promise<StepFileIndex> {
+    return (await this.getCacheEntry(uri, maxFileSizeMb)).index;
+  }
+
+  private async getCacheEntry(uri: vscode.Uri, maxFileSizeMb: number): Promise<CacheEntry> {
     if (uri.scheme !== "file") {
       const doc = await vscode.workspace.openTextDocument(uri);
-      return StepFileIndex.build(Buffer.from(doc.getText(), "utf8"));
+      const buffer = Buffer.from(doc.getText(), "utf8");
+      return {
+        mtimeMs: doc.version,
+        size: buffer.byteLength,
+        modelKey: `${uri.toString()}@${doc.version}:${buffer.byteLength}`,
+        index: StepFileIndex.build(buffer),
+      };
     }
 
     const stat = await fs.stat(uri.fsPath);
     const cached = this.indexCache.get(uri.fsPath);
     if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
-      return cached.index;
+      return cached;
     }
     if (cached) {
       this.indexCache.delete(uri.fsPath);
@@ -268,8 +290,26 @@ class ViewerController implements vscode.CodeLensProvider {
     }
     const buffer = await fs.readFile(uri.fsPath);
     const index = StepFileIndex.build(buffer);
-    this.indexCache.set(uri.fsPath, { mtimeMs: stat.mtimeMs, size: stat.size, index });
-    return index;
+    const entry = {
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      modelKey: `${uri.toString()}@${stat.mtimeMs}:${stat.size}`,
+      index,
+    };
+    this.indexCache.set(uri.fsPath, entry);
+    return entry;
+  }
+
+  /** ifc-lite renders owning products; synthetic bare-item previews stay disabled. */
+  private isIfcLitePreviewable(
+    index: StepFileIndex,
+    id: number,
+    includeChildren: boolean,
+  ): boolean {
+    return (
+      index.hasRenderableRepresentation(id) ||
+      (includeChildren && index.hasRenderableDescendant(id))
+    );
   }
 
   private async reveal(target: PickTarget): Promise<void> {
@@ -372,7 +412,7 @@ class ViewerController implements vscode.CodeLensProvider {
           continue;
         }
         const id = Number.parseInt(match[1], 10);
-        if (!index.isPreviewable(id, config.includeChildren)) {
+        if (!this.isIfcLitePreviewable(index, id, config.includeChildren)) {
           continue;
         }
         lenses.push(

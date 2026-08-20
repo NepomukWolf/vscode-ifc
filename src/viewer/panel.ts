@@ -20,6 +20,12 @@ export class IfcViewerPanel {
 
   private ready = false;
   private pending: LoadMessage | undefined;
+  private residentModelKey: string | undefined;
+  private pendingModelToken: number | undefined;
+  private readonly statusWaiters = new Map<
+    number,
+    { resolve: (status: StatusMessage) => void; reject: (error: Error) => void }
+  >();
   private pendingNavigation: NavigationStateMessage | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
@@ -83,17 +89,36 @@ export class IfcViewerPanel {
     return IfcViewerPanel.instance;
   }
 
-  /** Render a sub-model. Buffers until the webview signals it is ready. */
-  load(message: LoadMessage): void {
+  /** Load/switch the resident model and wait for this preview request to settle. */
+  load(message: LoadMessage): Promise<StatusMessage> {
+    const settled = new Promise<StatusMessage>((resolve, reject) => {
+      this.statusWaiters.set(message.token, { resolve, reject });
+    });
+    let outgoing = message;
+    if (this.residentModelKey === message.modelKey) {
+      outgoing = { ...message, ifcBytes: undefined };
+      if (!this.ready && this.pending?.modelKey === message.modelKey && this.pending.ifcBytes) {
+        outgoing.ifcBytes = this.pending.ifcBytes;
+        this.pendingModelToken = message.token;
+      }
+    } else {
+      this.residentModelKey = message.modelKey;
+      this.pendingModelToken = message.token;
+    }
     this.panel.title = `IFC 3D: ${message.fileName}`;
     if (this.ready) {
-      this.post(message);
+      this.post(outgoing);
     } else {
-      this.pending = message;
+      this.pending = outgoing;
     }
     if (!this.panel.visible) {
       this.panel.reveal(vscode.ViewColumn.Beside, true);
     }
+    return settled;
+  }
+
+  hasResidentModel(modelKey: string): boolean {
+    return this.residentModelKey === modelKey;
   }
 
   setNavigationState(canGoBack: boolean, canGoForward: boolean): void {
@@ -135,6 +160,18 @@ export class IfcViewerPanel {
         this.forwardEmitter.fire();
         break;
       case "status":
+        if (message.token === this.pendingModelToken) {
+          if (message.state === "error") {
+            this.residentModelKey = undefined;
+          }
+          if (message.state !== "loading") {
+            this.pendingModelToken = undefined;
+          }
+        }
+        if (message.state !== "loading") {
+          this.statusWaiters.get(message.token)?.resolve(message);
+          this.statusWaiters.delete(message.token);
+        }
         this.statusEmitter.fire(message);
         break;
       case "log":
@@ -186,6 +223,10 @@ export class IfcViewerPanel {
     this.backEmitter.dispose();
     this.forwardEmitter.dispose();
     this.statusEmitter.dispose();
+    for (const waiter of this.statusWaiters.values()) {
+      waiter.reject(new Error("The IFC preview panel was closed."));
+    }
+    this.statusWaiters.clear();
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();
     }

@@ -34,7 +34,7 @@ IFC Language Tools combines local editor support with language-server features f
 - Navigation: go to definition, find references, document highlights, and a spatial Outline for IFC projects, spaces, products, breadcrumbs, and go-to-symbol.
 - Validation: schema-aware diagnostics for IFC entity and attribute issues.
 - Editing assistance: signature help, inlay hints, and IFC file scaffold generation.
-- 3D preview: focused element preview without loading the whole model in a separate viewer.
+- 3D preview: experimental ifc-lite WebGPU viewer that keeps the current model loaded and isolates the focused element and its configured relationships.
 - Large files: lightweight features remain available where possible while expensive AST-backed analysis is bounded.
 
 Detailed feature docs:
