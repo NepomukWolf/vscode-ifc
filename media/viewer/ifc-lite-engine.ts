@@ -118,7 +118,8 @@ export class IfcLiteEngine implements RenderEngine {
     this.isolatedIds = new Set(load.renderIds);
     this.selectedIds.clear();
 
-    if (this.modelKey !== load.modelKey) {
+    const replacingModel = this.modelKey !== load.modelKey;
+    if (replacingModel) {
       if (!load.bytes) {
         throw new Error("The requested IFC model is not resident and no model bytes were supplied.");
       }
@@ -128,7 +129,11 @@ export class IfcLiteEngine implements RenderEngine {
     }
 
     this.requestRender();
-    await this.fit();
+    if (replacingModel) {
+      await this.reset();
+    } else {
+      await this.fit();
+    }
     return this.visibleStats();
   }
 
@@ -240,20 +245,56 @@ export class IfcLiteEngine implements RenderEngine {
       return;
     }
     const camera = renderer.getCamera();
-    camera.reset();
-    camera.fitBoundsAdaptive(bounds, {
-      animate: false,
-      viewportShortPx: Math.max(
-        1,
-        Math.min(this.canvas.clientWidth, this.canvas.clientHeight),
-      ),
-    });
-    camera.setOrbitAnchorBounds(bounds);
-    camera.setOrbitCenter({
+    const center = {
       x: (bounds.min.x + bounds.max.x) / 2,
       y: (bounds.min.y + bounds.max.y) / 2,
       z: (bounds.min.z + bounds.max.z) / 2,
-    });
+    };
+    const currentPosition = camera.getPosition();
+    const currentTarget = camera.getTarget();
+    let dx = currentPosition.x - currentTarget.x;
+    let dy = currentPosition.y - currentTarget.y;
+    let dz = currentPosition.z - currentTarget.z;
+    let directionLength = Math.hypot(dx, dy, dz);
+    if (!Number.isFinite(directionLength) || directionLength < 1e-9) {
+      dx = 1.45;
+      dy = 1.8;
+      dz = 0.9;
+      directionLength = Math.hypot(dx, dy, dz);
+    }
+    dx /= directionLength;
+    dy /= directionLength;
+    dz /= directionLength;
+
+    const extentX = bounds.max.x - bounds.min.x;
+    const extentY = bounds.max.y - bounds.min.y;
+    const extentZ = bounds.max.z - bounds.min.z;
+    const radius = Math.max(0.01, Math.hypot(extentX, extentY, extentZ) / 2);
+    const aspect = Math.max(0.01, this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
+
+    if (camera.getProjectionMode() === "orthographic") {
+      const halfHeight = Math.max(extentY / 2, extentX / (2 * aspect), extentZ / 2);
+      camera.setOrthoSize(Math.max(0.01, halfHeight * 1.25));
+      camera.setTarget(center.x, center.y, center.z);
+      camera.setPosition(
+        center.x + dx * directionLength,
+        center.y + dy * directionLength,
+        center.z + dz * directionLength,
+      );
+    } else {
+      const verticalFov = camera.getFOV();
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+      const fitFov = Math.max(0.01, Math.min(verticalFov, horizontalFov));
+      const distance = (radius / Math.sin(fitFov / 2)) * 1.25;
+      camera.setTarget(center.x, center.y, center.z);
+      camera.setPosition(
+        center.x + dx * distance,
+        center.y + dy * distance,
+        center.z + dz * distance,
+      );
+    }
+    camera.setOrbitAnchorBounds(bounds);
+    camera.setOrbitCenter(center);
     this.requestRender();
   }
 
