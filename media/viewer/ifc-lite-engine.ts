@@ -239,8 +239,17 @@ export class IfcLiteEngine implements RenderEngine {
     if (!bounds || !renderer) {
       return;
     }
-    await renderer.getCamera().frameBounds(bounds.min, bounds.max, 0);
-    renderer.getCamera().setOrbitCenter({
+    const camera = renderer.getCamera();
+    camera.reset();
+    camera.fitBoundsAdaptive(bounds, {
+      animate: false,
+      viewportShortPx: Math.max(
+        1,
+        Math.min(this.canvas.clientWidth, this.canvas.clientHeight),
+      ),
+    });
+    camera.setOrbitAnchorBounds(bounds);
+    camera.setOrbitCenter({
       x: (bounds.min.x + bounds.max.x) / 2,
       y: (bounds.min.y + bounds.max.y) / 2,
       z: (bounds.min.z + bounds.max.z) / 2,
@@ -256,7 +265,14 @@ export class IfcLiteEngine implements RenderEngine {
     }
     const camera = renderer.getCamera();
     camera.reset();
-    camera.fitToBounds(bounds.min, bounds.max);
+    camera.fitBoundsAdaptive(bounds, {
+      animate: false,
+      viewportShortPx: Math.max(
+        1,
+        Math.min(this.canvas.clientWidth, this.canvas.clientHeight),
+      ),
+    });
+    camera.setOrbitAnchorBounds(bounds);
     camera.setOrbitCenter({
       x: (bounds.min.x + bounds.max.x) / 2,
       y: (bounds.min.y + bounds.max.y) / 2,
