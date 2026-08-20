@@ -10,12 +10,16 @@ export type ViewerTemplateState = {
   overlayBusy: boolean;
   hudInfoTitle: string;
   hudSelection: string;
+  canGoBack: boolean;
+  canGoForward: boolean;
 };
 
 export type ViewerTemplateActions = {
   onPointerDown(event: PointerEvent): void;
   onPointerUp(event: PointerEvent): void | Promise<void>;
   onDoubleClick(event: MouseEvent): void | Promise<void>;
+  onBack(): void;
+  onForward(): void;
   onFit(): void;
   onReset(): void;
 };
@@ -42,6 +46,8 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
       <div class="hud-warn">${state.hudWarn}</div>
     </div>
     <div class="toolbar">
+      <button class="tool-button" title="Back" aria-label="Back" ?disabled=${!state.canGoBack} @click=${actions.onBack}>←</button>
+      <button class="tool-button" title="Forward" aria-label="Forward" ?disabled=${!state.canGoForward} @click=${actions.onForward}>→</button>
       <button class="tool-button" title="Frame the element" @click=${actions.onFit}>Fit</button>
       <button class="tool-button" title="Reset the camera" @click=${actions.onReset}>Reset</button>
     </div>

@@ -39,6 +39,8 @@ class Viewer {
   private hudWarn = "";
   private overlayText = "";
   private overlayBusy = false;
+  private canGoBack = false;
+  private canGoForward = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -59,6 +61,12 @@ class Viewer {
   async render(message: LoadMessage): Promise<void> {
     this.renderChrome();
     await this.renderWith(message);
+  }
+
+  setNavigationState(canGoBack: boolean, canGoForward: boolean): void {
+    this.canGoBack = canGoBack;
+    this.canGoForward = canGoForward;
+    this.renderChrome();
   }
 
   private async renderWith(message: LoadMessage): Promise<void> {
@@ -148,6 +156,18 @@ class Viewer {
 
   private readonly reset = (): void => {
     void this.currentEngine()?.reset();
+  };
+
+  private readonly back = (): void => {
+    if (this.canGoBack) {
+      post({ type: "historyBack" });
+    }
+  };
+
+  private readonly forward = (): void => {
+    if (this.canGoForward) {
+      post({ type: "historyForward" });
+    }
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
@@ -246,6 +266,8 @@ class Viewer {
         onPointerDown: this.onPointerDown,
         onPointerUp: this.onPointerUp,
         onDoubleClick: this.onDoubleClick,
+        onBack: this.back,
+        onForward: this.forward,
         onFit: this.fit,
         onReset: this.reset,
       }),
@@ -261,6 +283,8 @@ class Viewer {
       hudInfo: this.hudInfo,
       hudInfoTitle: this.hudInfoTitle,
       hudSelection: this.hudSelection,
+      canGoBack: this.canGoBack,
+      canGoForward: this.canGoForward,
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,
@@ -275,6 +299,8 @@ if (app) {
     const message = event.data;
     if (message.type === "load") {
       void viewer.render(message);
+    } else if (message.type === "navigationState") {
+      viewer.setNavigationState(message.canGoBack, message.canGoForward);
     }
   });
   window.addEventListener("unload", () => viewer.dispose());

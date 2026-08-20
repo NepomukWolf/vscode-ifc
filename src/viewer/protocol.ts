@@ -40,7 +40,13 @@ export interface LoadMessage {
   truncated: boolean;
 }
 
-export type HostToWebview = LoadMessage;
+export interface NavigationStateMessage {
+  type: "navigationState";
+  canGoBack: boolean;
+  canGoForward: boolean;
+}
+
+export type HostToWebview = LoadMessage | NavigationStateMessage;
 
 /** webview -> host: the page is ready to receive a load. */
 export interface ReadyMessage {
@@ -57,6 +63,14 @@ export interface PickMessage {
 export interface FocusMessage {
   type: "focus";
   target: PickTarget;
+}
+
+export interface HistoryBackMessage {
+  type: "historyBack";
+}
+
+export interface HistoryForwardMessage {
+  type: "historyForward";
 }
 
 /** webview -> host: progress/outcome of a render. */
@@ -77,4 +91,11 @@ export interface LogMessage {
   message: string;
 }
 
-export type WebviewToHost = ReadyMessage | PickMessage | FocusMessage | StatusMessage | LogMessage;
+export type WebviewToHost =
+  | ReadyMessage
+  | PickMessage
+  | FocusMessage
+  | HistoryBackMessage
+  | HistoryForwardMessage
+  | StatusMessage
+  | LogMessage;

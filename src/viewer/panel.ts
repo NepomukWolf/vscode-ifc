@@ -1,6 +1,13 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
-import { HostToWebview, LoadMessage, PickTarget, StatusMessage, WebviewToHost } from "./protocol";
+import {
+  HostToWebview,
+  LoadMessage,
+  NavigationStateMessage,
+  PickTarget,
+  StatusMessage,
+  WebviewToHost,
+} from "./protocol";
 
 /**
  * Owns the single "IFC 3D Preview" webview panel: lifecycle, HTML/CSP, and the
@@ -13,6 +20,7 @@ export class IfcViewerPanel {
 
   private ready = false;
   private pending: LoadMessage | undefined;
+  private pendingNavigation: NavigationStateMessage | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   private readonly pickEmitter = new vscode.EventEmitter<PickTarget>();
@@ -22,6 +30,12 @@ export class IfcViewerPanel {
   private readonly focusEmitter = new vscode.EventEmitter<PickTarget>();
   /** Fires with the product and geometry ids double-clicked in the 3D scene. */
   readonly onFocus = this.focusEmitter.event;
+
+  private readonly backEmitter = new vscode.EventEmitter<void>();
+  readonly onBack = this.backEmitter.event;
+
+  private readonly forwardEmitter = new vscode.EventEmitter<void>();
+  readonly onForward = this.forwardEmitter.event;
 
   private readonly statusEmitter = new vscode.EventEmitter<StatusMessage>();
   readonly onStatus = this.statusEmitter.event;
@@ -75,6 +89,15 @@ export class IfcViewerPanel {
     this.panel.reveal(vscode.ViewColumn.Beside, true);
   }
 
+  setNavigationState(canGoBack: boolean, canGoForward: boolean): void {
+    const message: NavigationStateMessage = { type: "navigationState", canGoBack, canGoForward };
+    if (this.ready) {
+      this.post(message);
+    } else {
+      this.pendingNavigation = message;
+    }
+  }
+
   private post(message: HostToWebview): void {
     void this.panel.webview.postMessage(message);
   }
@@ -87,12 +110,22 @@ export class IfcViewerPanel {
           this.post(this.pending);
           this.pending = undefined;
         }
+        if (this.pendingNavigation) {
+          this.post(this.pendingNavigation);
+          this.pendingNavigation = undefined;
+        }
         break;
       case "pick":
         this.pickEmitter.fire(message.target);
         break;
       case "focus":
         this.focusEmitter.fire(message.target);
+        break;
+      case "historyBack":
+        this.backEmitter.fire();
+        break;
+      case "historyForward":
+        this.forwardEmitter.fire();
         break;
       case "status":
         this.statusEmitter.fire(message);
@@ -143,6 +176,8 @@ export class IfcViewerPanel {
     IfcViewerPanel.instance = undefined;
     this.pickEmitter.dispose();
     this.focusEmitter.dispose();
+    this.backEmitter.dispose();
+    this.forwardEmitter.dispose();
     this.statusEmitter.dispose();
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();

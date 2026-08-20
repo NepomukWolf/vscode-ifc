@@ -26,6 +26,8 @@ Click rendered geometry in the 3D viewer to jump back to its relevant definition
 
 Picking follows the preview context. In a wall, storey, assembly, or other multi-product preview, each product is selected as a whole. When a single product is previewed directly, its individual geometry parts can be selected to jump to or preview their representation definitions. Geometry that cannot be previewed independently remains selectable for source navigation.
 
+The Back and Forward buttons keep a short history of previews within the current viewer panel. Returning to an earlier preview also returns the editor to that preview root's IFC definition. Opening a new preview after going back discards the previous forward branch.
+
 ## Limitations
 
 The preview is bounded by `ifc.viewer.maxFileSizeMb`. Only the selected element and related references are rendered, but the source file still needs to be scanned.
