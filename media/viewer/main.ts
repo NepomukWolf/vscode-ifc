@@ -27,6 +27,7 @@ class Viewer {
   private lastFrame = performance.now();
   private activeLoadStage = "";
   private resizeObserver: ResizeObserver | undefined;
+  private resizeFrame = 0;
   private animationFrame = 0;
   private currentPickMode: PickMode = "product";
 
@@ -46,7 +47,7 @@ class Viewer {
     this.root = root;
     this.renderChrome();
     this.canvasHost = this.findCanvasHost();
-    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
     this.resizeObserver.observe(this.canvasHost);
     this.resize();
     this.tick();
@@ -54,6 +55,7 @@ class Viewer {
 
   dispose(): void {
     this.resizeObserver?.disconnect();
+    cancelAnimationFrame(this.resizeFrame);
     cancelAnimationFrame(this.animationFrame);
     this.engine?.dispose();
   }
@@ -250,6 +252,14 @@ class Viewer {
 
   private resizeEngine(engine: RenderEngine): void {
     engine.resize(this.canvasHost.clientWidth || 1, this.canvasHost.clientHeight || 1);
+  }
+
+  private scheduleResize(): void {
+    cancelAnimationFrame(this.resizeFrame);
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resizeFrame = 0;
+      this.resize();
+    });
   }
 
   private tick = (): void => {

@@ -59,7 +59,12 @@ export class IfcViewerPanel {
   static show(extensionUri: vscode.Uri, output: vscode.LogOutputChannel): IfcViewerPanel {
     const column = vscode.ViewColumn.Beside;
     if (IfcViewerPanel.instance) {
-      IfcViewerPanel.instance.panel.reveal(column, true);
+      // Revealing an already-visible panel makes VS Code recalculate editor-group
+      // widths. History navigation also reveals source in column one, so doing
+      // both caused a transient canvas resize during larger model loads.
+      if (!IfcViewerPanel.instance.panel.visible) {
+        IfcViewerPanel.instance.panel.reveal(column, true);
+      }
       return IfcViewerPanel.instance;
     }
 
@@ -86,7 +91,9 @@ export class IfcViewerPanel {
     } else {
       this.pending = message;
     }
-    this.panel.reveal(vscode.ViewColumn.Beside, true);
+    if (!this.panel.visible) {
+      this.panel.reveal(vscode.ViewColumn.Beside, true);
+    }
   }
 
   setNavigationState(canGoBack: boolean, canGoForward: boolean): void {
