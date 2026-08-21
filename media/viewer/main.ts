@@ -47,6 +47,7 @@ class Viewer {
     this.root = root;
     this.renderChrome();
     this.canvasHost = this.findCanvasHost();
+    this.getEngine();
     this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
     this.resizeObserver.observe(this.canvasHost);
     this.resize();

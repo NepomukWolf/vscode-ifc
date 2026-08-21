@@ -1,4 +1,4 @@
-import { GeometryProcessor, type MeshData } from "@ifc-lite/geometry";
+import { decodeInstancedShard, GeometryProcessor, type MeshData } from "@ifc-lite/geometry";
 import { Renderer, type RenderOptions } from "@ifc-lite/renderer";
 import type { PickTarget } from "../../src/viewer/protocol";
 import type { EngineOptions, RenderEngine, RenderLoad, RenderStats } from "./engine";
@@ -35,27 +35,6 @@ function extendBounds(target: Bounds, source: Bounds): void {
   target.max.z = Math.max(target.max.z, source.max.z);
 }
 
-function meshBounds(mesh: MeshData): Bounds | undefined {
-  const positions = mesh.positions;
-  if (positions.length < 3) {
-    return undefined;
-  }
-  const bounds = emptyBounds();
-  const origin = mesh.origin ?? [0, 0, 0];
-  for (let i = 0; i + 2 < positions.length; i += 3) {
-    const x = positions[i] + origin[0];
-    const y = positions[i + 1] + origin[1];
-    const z = positions[i + 2] + origin[2];
-    bounds.min.x = Math.min(bounds.min.x, x);
-    bounds.min.y = Math.min(bounds.min.y, y);
-    bounds.min.z = Math.min(bounds.min.z, z);
-    bounds.max.x = Math.max(bounds.max.x, x);
-    bounds.max.y = Math.max(bounds.max.y, y);
-    bounds.max.z = Math.max(bounds.max.z, z);
-  }
-  return isFiniteBounds(bounds) ? bounds : undefined;
-}
-
 function cssBackground(): [number, number, number, number] {
   const fallback: [number, number, number, number] = [0.118, 0.118, 0.118, 1];
   const value = getComputedStyle(document.body)
@@ -84,14 +63,14 @@ export class IfcLiteEngine implements RenderEngine {
 
   private renderer: Renderer | undefined;
   private geometry: GeometryProcessor | undefined;
+  private rendererReady: Promise<void> | undefined;
+  private geometryReady: Promise<void> | undefined;
+  private backendStartedAt = 0;
   private modelKey: string | undefined;
   private isolatedIds = new Set<number>();
   private selectedIds = new Set<number>();
-  private readonly boundsById = new Map<number, Bounds>();
-  private readonly meshCountsById = new Map<number, number>();
-  private triangleCount = 0;
   private readonly background = cssBackground();
-  private streaming = false;
+  private loading = false;
   private disposed = false;
   private pointerId: number | undefined;
   private lastPointerX = 0;
@@ -103,6 +82,9 @@ export class IfcLiteEngine implements RenderEngine {
     this.canvas.tabIndex = 0;
     container.append(this.canvas);
     this.installControls();
+    if (navigator.gpu) {
+      this.prepareBackend();
+    }
   }
 
   async load(load: RenderLoad): Promise<RenderStats> {
@@ -115,6 +97,7 @@ export class IfcLiteEngine implements RenderEngine {
       );
     }
 
+    const loadStartedAt = performance.now();
     this.isolatedIds = new Set(load.renderIds);
     this.selectedIds.clear();
 
@@ -134,86 +117,106 @@ export class IfcLiteEngine implements RenderEngine {
     } else {
       await this.fit();
     }
+    this.renderRequestedFrame();
+    if (replacingModel) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      this.log(`load: first complete frame in ${Math.round(performance.now() - loadStartedAt)} ms`);
+    }
     return this.visibleStats();
   }
 
   private async loadModel(modelKey: string, bytes: Uint8Array): Promise<void> {
     this.log(`load: initializing ifc-lite (${bytes.byteLength.toLocaleString()} bytes)`);
-    this.releaseModel();
-    const renderer = new Renderer(this.canvas);
-    // Keep every occurrence on the documented MeshData/addMeshes path. The
-    // optional shard path needs separate renderer plumbing and is not part of
-    // this feasibility experiment.
-    const geometry = new GeometryProcessor({ enableInstancing: false });
-    this.renderer = renderer;
-    this.geometry = geometry;
-    this.boundsById.clear();
-    this.meshCountsById.clear();
-    this.triangleCount = 0;
-    this.streaming = true;
+    if (this.modelKey !== undefined || this.loading) {
+      this.releaseModel();
+      this.prepareBackend();
+    } else if (!this.renderer || !this.geometry) {
+      this.prepareBackend();
+    }
+    const renderer = this.renderer;
+    const geometry = this.geometry;
+    const rendererReady = this.rendererReady;
+    const geometryReady = this.geometryReady;
+    if (!renderer || !geometry || !rendererReady || !geometryReady) {
+      throw new Error("ifc-lite failed to initialize its rendering backend.");
+    }
+    this.loading = true;
 
-    await Promise.all([renderer.init(), geometry.init()]);
+    await geometryReady;
     if (this.disposed || this.renderer !== renderer) {
       return;
     }
-    this.resize(this.canvas.clientWidth || 1, this.canvas.clientHeight || 1);
+    const initializedAt = performance.now();
+    this.log(`load: initialized in ${Math.round(initializedAt - this.backendStartedAt)} ms`);
 
-    let totalMeshes = 0;
-    let lastLoggedMeshes = 0;
+    const meshes: MeshData[] = [];
+    const instancedShards: ArrayBuffer[] = [];
     const wasmUrl = new URL("./ifc-lite_bg.wasm", import.meta.url).href;
+    const processingStartedAt = performance.now();
     for await (const event of geometry.processAdaptive(bytes, { wasmUrls: { wasm: wasmUrl } })) {
       if (this.disposed || this.renderer !== renderer) {
         return;
       }
       if (event.type === "batch") {
-        const meshes = event.meshes.filter((mesh) => (mesh.geometryClass ?? 0) !== 2);
-        if (meshes.length > 0) {
-          this.recordMeshes(meshes);
-          renderer.addMeshes(meshes, true);
-          totalMeshes += meshes.length;
-          renderer.render(this.renderOptions());
+        for (const mesh of event.meshes) {
+          if ((mesh.geometryClass ?? 0) !== 2) {
+            meshes.push(mesh);
+          }
         }
-        if (totalMeshes - lastLoggedMeshes >= 250) {
-          this.log(`load: streamed ${totalMeshes.toLocaleString()} meshes`);
-          lastLoggedMeshes = totalMeshes;
+        for (const shard of event.instancedShards ?? []) {
+          instancedShards.push(shard);
         }
       }
     }
-    const device = renderer.getGPUDevice();
-    const pipeline = renderer.getPipeline();
-    if (device && pipeline) {
-      await renderer.getScene().finalizeStreamingAsync(device, pipeline);
+    const processedAt = performance.now();
+    this.log(
+      `load: geometry processed in ${Math.round(processedAt - processingStartedAt)} ms — ${meshes.length.toLocaleString()} flat meshes, ${instancedShards.length.toLocaleString()} instance shards`,
+    );
+
+    await rendererReady;
+    if (this.disposed || this.renderer !== renderer) {
+      return;
     }
-    this.streaming = false;
+    this.resize(this.canvas.clientWidth || 1, this.canvas.clientHeight || 1);
+
+    const flatUploadStartedAt = performance.now();
+    renderer.loadGeometry(meshes);
+    const flatUploadedAt = performance.now();
+    this.log(`load: flat geometry uploaded in ${Math.round(flatUploadedAt - flatUploadStartedAt)} ms`);
+
+    const device = renderer.getGPUDevice();
+    if (!device) {
+      throw new Error("ifc-lite initialized without a WebGPU device.");
+    }
+    const instancedUploadStartedAt = performance.now();
+    let instancedOccurrences = 0;
+    for (const payload of instancedShards) {
+      const shard = decodeInstancedShard(new Uint8Array(payload));
+      instancedOccurrences += shard.instances.length;
+      renderer.getScene().addInstancedShard(device, shard);
+    }
+    const instancedUploadedAt = performance.now();
+    this.log(
+      `load: instanced geometry uploaded in ${Math.round(instancedUploadedAt - instancedUploadStartedAt)} ms — ${instancedOccurrences.toLocaleString()} occurrences`,
+    );
+
+    this.loading = false;
     this.modelKey = modelKey;
     renderer.ensureMeshResources();
     this.log(
-      `load: complete — ${totalMeshes.toLocaleString()} meshes, ${this.triangleCount.toLocaleString()} triangles`,
+      `load: complete in ${Math.round(instancedUploadedAt - processingStartedAt)} ms`,
     );
     this.requestRender();
   }
 
-  private recordMeshes(meshes: readonly MeshData[]): void {
-    for (const mesh of meshes) {
-      this.meshCountsById.set(mesh.expressId, (this.meshCountsById.get(mesh.expressId) ?? 0) + 1);
-      this.triangleCount += Math.floor(mesh.indices.length / 3);
-      const bounds = meshBounds(mesh);
-      if (!bounds) {
-        continue;
-      }
-      const existing = this.boundsById.get(mesh.expressId);
-      if (existing) {
-        extendBounds(existing, bounds);
-      } else {
-        this.boundsById.set(mesh.expressId, bounds);
-      }
-    }
-  }
-
   private visibleBounds(): Bounds | undefined {
     const bounds = emptyBounds();
+    const scene = this.renderer?.getScene();
+    if (!scene) {
+      return undefined;
+    }
     for (const id of this.isolatedIds) {
-      const entityBounds = this.boundsById.get(id);
+      const entityBounds = scene.getEntityBoundingBox(id);
       if (entityBounds) {
         extendBounds(bounds, entityBounds);
       }
@@ -222,11 +225,14 @@ export class IfcLiteEngine implements RenderEngine {
   }
 
   private visibleStats(): RenderStats {
-    let meshes = 0;
+    const scene = this.renderer?.getScene();
+    let renderableEntities = 0;
     for (const id of this.isolatedIds) {
-      meshes += this.meshCountsById.get(id) ?? 0;
+      if (scene?.getEntityBoundingBox(id)) {
+        renderableEntities++;
+      }
     }
-    return { meshes, triangles: this.triangleCount };
+    return { meshes: renderableEntities };
   }
 
   private renderOptions(): RenderOptions {
@@ -234,7 +240,7 @@ export class IfcLiteEngine implements RenderEngine {
       clearColor: this.background,
       isolatedIds: this.isolatedIds,
       selectedIds: this.selectedIds,
-      isStreaming: this.streaming,
+      isStreaming: this.loading,
     };
   }
 
@@ -324,7 +330,7 @@ export class IfcLiteEngine implements RenderEngine {
 
   async pick(clientX: number, clientY: number): Promise<PickTarget | undefined> {
     const renderer = this.renderer;
-    if (!renderer || this.streaming) {
+    if (!renderer || this.loading) {
       return undefined;
     }
     const rect = this.canvas.getBoundingClientRect();
@@ -352,8 +358,13 @@ export class IfcLiteEngine implements RenderEngine {
     if (!renderer) {
       return;
     }
-    renderer.getCamera().update(deltaMs);
-    renderer.render(this.renderOptions());
+    const cameraAnimating = renderer.getCamera().update(deltaMs);
+    if (cameraAnimating) {
+      renderer.requestRender();
+    }
+    if (renderer.consumeRenderRequest()) {
+      renderer.render(this.renderOptions());
+    }
   }
 
   dispose(): void {
@@ -367,10 +378,42 @@ export class IfcLiteEngine implements RenderEngine {
     this.geometry = undefined;
     this.renderer?.destroy();
     this.renderer = undefined;
+    this.rendererReady = undefined;
+    this.geometryReady = undefined;
     this.modelKey = undefined;
-    this.streaming = false;
-    this.boundsById.clear();
-    this.meshCountsById.clear();
+    this.loading = false;
+  }
+
+  private prepareBackend(): void {
+    const renderer = new Renderer(this.canvas);
+    const geometry = new GeometryProcessor();
+    this.renderer = renderer;
+    this.geometry = geometry;
+    this.backendStartedAt = performance.now();
+    this.rendererReady = renderer.init();
+    this.geometryReady = geometry.init();
+    void this.rendererReady.catch(() => undefined);
+    void this.geometryReady.catch(() => undefined);
+    this.logParallelCapabilities();
+  }
+
+  private renderRequestedFrame(): void {
+    const renderer = this.renderer;
+    if (!renderer) {
+      return;
+    }
+    renderer.consumeRenderRequest();
+    renderer.render(this.renderOptions());
+  }
+
+  private logParallelCapabilities(): void {
+    const sharedMemory = typeof SharedArrayBuffer !== "undefined";
+    const workers = typeof Worker !== "undefined";
+    const cores = navigator.hardwareConcurrency ?? 1;
+    const isolated = globalThis.crossOriginIsolated === true;
+    this.log(
+      `diagnostic: parallel capability — SharedArrayBuffer=${sharedMemory}, Worker=${workers}, hardwareConcurrency=${cores}, crossOriginIsolated=${isolated}`,
+    );
   }
 
   private requestRender(): void {
