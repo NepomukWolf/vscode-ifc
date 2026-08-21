@@ -8,6 +8,10 @@
 - Preserve the camera direction when switching preview contexts and avoid transient viewer resizing
 - Improve the viewer HUD with the source path and clearer included-element information
 
+## 0.5.1
+
+- Disable IFC inlay hints by default while keeping them available on demand
+
 ## 0.5.0
 
 - Update to IFC Language Server `v0.6.0`
