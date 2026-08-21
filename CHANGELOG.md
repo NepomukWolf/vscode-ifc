@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Include doors, windows, and other hosted opening fillings in their host's 3D preview
+- Add contextual double-click navigation into products and source-backed geometry parts
+- Add Back and Forward history that restores both the preview context and IFC source position
+- Preserve the camera direction when switching preview contexts and avoid transient viewer resizing
+- Improve the viewer HUD with the source path and clearer included-element information
+
 ## 0.5.0
 
 - Update to IFC Language Server `v0.6.0`
