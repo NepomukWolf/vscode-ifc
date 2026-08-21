@@ -128,6 +128,7 @@ export class ThatOpenEngine implements RenderEngine {
 
   async load(load: RenderLoad): Promise<RenderStats> {
     const renderIds = load.renderIds.length > 0 ? load.renderIds : [load.rootId];
+    const previousViewDirection = this.currentViewDirection();
     this.pickMode = load.pickMode;
     this.log(`load: waiting for setup (${load.bytes.byteLength.toLocaleString()} bytes, ${renderIds.length} render id${renderIds.length === 1 ? "" : "s"})`);
     await this.ready;
@@ -152,7 +153,11 @@ export class ThatOpenEngine implements RenderEngine {
     }
 
     this.log("load: fitting camera");
-    await this.fit();
+    await withTimeout(
+      "camera fit",
+      this.fitInDirection(previousViewDirection ?? DEFAULT_VIEW_DIRECTION),
+      5_000,
+    );
     this.renderer.needsUpdate = true;
     const meshes = this.modelGroup ? countRenderableObjects(this.modelGroup) : 0;
     return { meshes };
@@ -252,11 +257,28 @@ export class ThatOpenEngine implements RenderEngine {
     if (!this.modelGroup) {
       return;
     }
-    await withTimeout("camera fit", this.fitDefaultView(), 5_000);
+    await withTimeout(
+      "camera fit",
+      this.fitInDirection(this.currentViewDirection() ?? DEFAULT_VIEW_DIRECTION),
+      5_000,
+    );
     this.renderer.needsUpdate = true;
   }
 
-  private async fitDefaultView(): Promise<void> {
+  private currentViewDirection(): THREE.Vector3 | undefined {
+    if (!this.modelGroup) {
+      return undefined;
+    }
+    const position = this.world.camera.controls.getPosition(new THREE.Vector3());
+    const target = this.world.camera.controls.getTarget(new THREE.Vector3());
+    const direction = position.sub(target);
+    if (!Number.isFinite(direction.lengthSq()) || direction.lengthSq() < 1e-12) {
+      return undefined;
+    }
+    return direction.normalize();
+  }
+
+  private async fitInDirection(viewDirection: THREE.Vector3): Promise<void> {
     const group = this.modelGroup;
     if (!group) {
       return;
@@ -282,7 +304,7 @@ export class ThatOpenEngine implements RenderEngine {
     const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
     const fitFov = Math.min(verticalFov, horizontalFov);
     const distance = (radius / Math.sin(fitFov / 2)) * DEFAULT_VIEW_PADDING;
-    const position = center.clone().addScaledVector(DEFAULT_VIEW_DIRECTION, distance);
+    const position = center.clone().addScaledVector(viewDirection, distance);
 
     await this.world.camera.controls.setLookAt(
       position.x,
@@ -297,7 +319,11 @@ export class ThatOpenEngine implements RenderEngine {
   }
 
   async reset(): Promise<void> {
-    await this.fit();
+    if (!this.modelGroup) {
+      return;
+    }
+    await withTimeout("camera reset", this.fitInDirection(DEFAULT_VIEW_DIRECTION), 5_000);
+    this.renderer.needsUpdate = true;
   }
 
   async pick(clientX: number, clientY: number): Promise<PickTarget | undefined> {
