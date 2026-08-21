@@ -2,13 +2,17 @@ import { existsSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 import { strict as assert } from "node:assert";
 import { test, type TestContext } from "node:test";
-import { StepFileIndex } from "./stepIndex";
+import { REL_FILLS, StepFileIndex } from "./stepIndex";
 
 function fixture(name: string): StepFileIndex {
   return StepFileIndex.build(readFileSync(path.resolve(process.cwd(), "fixtures", name)));
 }
 
 const gate = fixture("representation-gate.ifc");
+
+test("relationship index watches IfcRelFillsElement", () => {
+  assert.deepEqual(gate.relIdsOfType(REL_FILLS), [1120]);
+});
 
 test("hasRenderableRepresentation: renders solid-bearing products (+ tolerates `= ` spacing)", () => {
   assert.equal(gate.hasRenderableRepresentation(100), true);

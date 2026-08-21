@@ -16,11 +16,12 @@ function text(bytes: ArrayBuffer): string {
 }
 
 test("extractSubModel: ordinary product has no pick remap and renders its own id", () => {
-  const sub = extractSubModel(gate, 100);
+  const sub = extractSubModel(gate, 300);
   assert.equal(sub.pickRemap.size, 0);
-  assert.deepEqual(sub.renderIds, [100]);
+  assert.deepEqual(sub.renderIds, [300]);
+  assert.equal(sub.pickMode, "geometry");
   // The verbatim source instance is carried through.
-  assert.match(text(sub.ifcBytes), /#100=\s*IFCWALL/);
+  assert.match(text(sub.ifcBytes), /#300=\s*IFCWALL/);
 });
 
 test("extractSubModel: bare brep is wrapped in a synthetic product for web-ifc", () => {
@@ -32,6 +33,7 @@ test("extractSubModel: bare brep is wrapped in a synthetic product for web-ifc",
   const productId = sub.renderIds[0];
   assert.ok(productId > gate.maxExpressId(), "wrapper id must not collide with source ids");
   assert.equal(sub.pickRemap.get(productId), 504);
+  assert.equal(sub.pickMode, "geometry");
 
   // The wrapper chain: proxy -> product-definition-shape -> shape-rep -> the brep,
   // anchored in the file's existing geometric context (#9), tagged Brep.
@@ -54,8 +56,10 @@ test("extractSubModel: an opening is re-presented under a proxy for web-ifc pari
   const sub = extractSubModel(gate, 1100); // #1100 IfcOpeningElement
   const out = text(sub.ifcBytes);
   // A synthetic proxy reuses the opening's existing shape (#1102) and placement (#1101).
-  assert.equal(sub.renderIds.length, 1);
-  const productId = sub.renderIds[0];
+  assert.equal(sub.hostedCount, 1);
+  assert.equal(sub.pickMode, "product");
+  assert.ok(sub.renderIds.includes(1130), "the opening's filling is rendered");
+  const productId = sub.renderIds.find((id) => id > gate.maxExpressId()) as number;
   assert.ok(productId > gate.maxExpressId());
   assert.match(out, new RegExp(`#${productId}=IFCBUILDINGELEMENTPROXY\\([^)]*#1101,#1102`));
   assert.equal(sub.pickRemap.get(productId), 1100);
@@ -68,6 +72,8 @@ test("extractSubModel: an assembly renders its decomposition children (the fligh
   const sub = extractSubModel(gate, 700); // #700 IfcStair, geometry lives in flight #710
   assert.equal(sub.rootType, "IFCSTAIR");
   assert.equal(sub.childCount, 1);
+  assert.equal(sub.hostedCount, 0);
+  assert.equal(sub.pickMode, "product");
   // The flight is rendered (not the geometry-less stair), with no remap needed.
   assert.ok(sub.renderIds.includes(710));
   assert.equal(sub.pickRemap.size, 0);
@@ -82,5 +88,50 @@ test("extractSubModel: a storey renders contained elements via spatial containme
   // volume must not leak into the file.
   assert.ok(!sub.renderIds.includes(930));
   assert.ok(!text(sub.ifcBytes).includes("#934="));
+  assert.equal(sub.childCount, 2);
+  // The window is both spatially contained and hosted by the wall, so it is
+  // rendered once and is not counted again as an additional hosted product.
+  assert.equal(sub.renderIds.filter((id) => id === 1130).length, 1);
+  assert.equal(sub.hostedCount, 0);
+});
+
+test("extractSubModel: a host includes its opening cut-out and filling by default", () => {
+  const sub = extractSubModel(gate, 100);
+  const out = text(sub.ifcBytes);
+  assert.ok(sub.renderIds.includes(100));
+  assert.ok(sub.renderIds.includes(1130));
+  assert.equal(sub.hostedCount, 1);
+  assert.equal(sub.pickMode, "product");
+  assert.match(out, /#1100=IFCOPENINGELEMENT/);
+  assert.match(out, /#1110=IFCRELVOIDSELEMENT/);
+  assert.match(out, /#1120=IFCRELFILLSELEMENT/);
+});
+
+test("extractSubModel: hosts reached through child traversal include their fillings", () => {
+  const sub = extractSubModel(gate, 1140);
+  assert.ok(sub.renderIds.includes(100));
+  assert.ok(sub.renderIds.includes(1130));
   assert.equal(sub.childCount, 1);
+  assert.equal(sub.hostedCount, 1);
+});
+
+test("extractSubModel: nested aggregation previews keep descendant products atomic", () => {
+  const sub = extractSubModel(gate, 1150);
+  assert.ok(sub.renderIds.includes(100));
+  assert.ok(sub.renderIds.includes(1130));
+  assert.equal(sub.childCount, 2);
+  assert.equal(sub.hostedCount, 1);
+  assert.equal(sub.pickMode, "product");
+});
+
+test("extractSubModel: disabling hosted elements retains the opening and wall cut-out", () => {
+  const sub = extractSubModel(gate, 100, { includeHostedElements: false });
+  const out = text(sub.ifcBytes);
+  assert.deepEqual(sub.renderIds, [100]);
+  assert.equal(sub.hostedCount, 0);
+  assert.equal(sub.pickMode, "geometry");
+  assert.match(out, /#1100=IFCOPENINGELEMENT/);
+  assert.match(out, /#1110=IFCRELVOIDSELEMENT/);
+  assert.doesNotMatch(out, /#1120=IFCRELFILLSELEMENT/);
+  assert.doesNotMatch(out, /#1130=IFCWINDOW/);
 });
