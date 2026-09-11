@@ -76,6 +76,8 @@ If the language server fails to start after setting a custom server path, clear 
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor guidelines, changelog expectations, and the release process.
+
 Install dependencies and compile the extension:
 
 ```bash

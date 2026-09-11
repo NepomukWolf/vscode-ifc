@@ -50,15 +50,33 @@ jobs:
       - name: Package extension
         run: vsce package --out extension.vsix
 
+      - name: Extract release notes from changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          awk -v heading="## ${VERSION}" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+            END {
+              if (!found) {
+                print "No changelog section found for " heading > "/dev/stderr"
+                exit 1
+              }
+            }
+          ' CHANGELOG.md > release-notes.md
+
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "The changelog section for ${VERSION} is empty." >&2
+            exit 1
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: |
-            Release for commit ${{ github.sha }}
-
-            **Tag:** `${{ github.ref_name }}`
-            **Branch:** `production`
-            **Triggered by:** ${{ github.actor }}
+          body_path: release-notes.md
+          generate_release_notes: true
           files: extension.vsix

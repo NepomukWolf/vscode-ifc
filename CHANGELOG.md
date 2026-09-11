@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - Include doors, windows, and other hosted opening fillings in their host's 3D preview
 - Add contextual double-click navigation into products and source-backed geometry parts
