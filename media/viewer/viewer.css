@@ -2,9 +2,14 @@
   color-scheme: light dark;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
-body,
-#app {
+body {
   margin: 0;
   height: 100%;
   width: 100%;
@@ -19,7 +24,9 @@ body {
 }
 
 #app {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 
 .viewer-canvas {
@@ -45,6 +52,20 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+.hud-path {
+  margin-bottom: 3px;
+  overflow: hidden;
+  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  font-size: 0.85em;
+  opacity: 0.8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-path:empty {
+  display: none;
+}
+
 .hud-title {
   font-weight: 600;
   font-size: 1.15em;
@@ -55,10 +76,23 @@ body {
   margin-top: 2px;
 }
 
-.hud-stats {
+.hud-selection {
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.hud-selection:empty {
+  display: none;
+}
+
+.hud-info {
   opacity: 0.7;
-  margin-top: 6px;
-  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+  pointer-events: auto;
+}
+
+.hud-info:empty {
+  display: none;
 }
 
 .hud-warn {

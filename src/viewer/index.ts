@@ -2,8 +2,11 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveExpressIdAtCursor } from "./expressId";
+import { LinearHistory } from "./linearHistory";
+import { LruCache } from "./lruCache";
 import { IfcViewerPanel } from "./panel";
-import { LoadMessage } from "./protocol";
+import { resolveFocusSourceId, resolvePickSourceId } from "./picking";
+import { LoadMessage, PickMode, PickTarget } from "./protocol";
 import { StepFileIndex } from "./stepIndex";
 import { extractSubModel } from "./subModel";
 
@@ -25,9 +28,18 @@ const LENS_WHOLE_FILE_MAX_LINES = 6000;
 const LENS_VIEWPORT_MARGIN = 200;
 /** Defensive ceiling on lenses returned from one pass. */
 const LENS_MAX = 2000;
+/** Keep memory bounded while allowing quick switching between a few open models. */
+const INDEX_CACHE_MAX_ENTRIES = 3;
+const PREVIEW_HISTORY_CAPACITY = 50;
+
+interface PreviewHistoryEntry {
+  uri: vscode.Uri;
+  id: number;
+}
 
 interface ViewerConfig {
   includeChildren: boolean;
+  includeHostedElements: boolean;
   codeLens: boolean;
   maxFileSizeMb: number;
 }
@@ -36,6 +48,7 @@ function readConfig(): ViewerConfig {
   const c = vscode.workspace.getConfiguration("ifc");
   return {
     includeChildren: c.get<boolean>("viewer.includeChildren", true),
+    includeHostedElements: c.get<boolean>("viewer.includeHostedElements", true),
     codeLens: c.get<boolean>("viewer.codeLens", true),
     maxFileSizeMb: c.get<number>("viewer.maxFileSizeMb", 400),
   };
@@ -53,11 +66,17 @@ interface CacheEntry {
  * the webview. Also serves CodeLenses and pick-to-reveal.
  */
 class ViewerController implements vscode.CodeLensProvider {
-  private readonly indexCache = new Map<string, CacheEntry>();
+  private readonly indexCache = new LruCache<string, CacheEntry>(INDEX_CACHE_MAX_ENTRIES);
   private panel: IfcViewerPanel | undefined;
   private lastSourceUri: vscode.Uri | undefined;
   /** Rendered-id -> source-id for the current preview (see SubModelResult.pickRemap). */
   private lastPickRemap: Map<number, number> = new Map();
+  private lastPickMode: PickMode = "product";
+  private readonly history = new LinearHistory<PreviewHistoryEntry>(
+    PREVIEW_HISTORY_CAPACITY,
+    (left, right) => left.id === right.id && left.uri.toString() === right.uri.toString(),
+  );
+  private navigationBusy = false;
   private token = 0;
   private lensRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -88,6 +107,12 @@ class ViewerController implements vscode.CodeLensProvider {
     this.lensRefreshTimer = setTimeout(() => this.lensChanged.fire(), 200);
   }
 
+  onDocumentClosed(document: vscode.TextDocument): void {
+    if (document.uri.scheme === "file") {
+      this.indexCache.delete(document.uri.fsPath);
+    }
+  }
+
   /** Entry point for the `ifc.viewElement` command. */
   async viewElement(arg?: { uri?: vscode.Uri; id?: number }): Promise<void> {
     try {
@@ -98,7 +123,7 @@ class ViewerController implements vscode.CodeLensProvider {
         );
         return;
       }
-      await this.render(target.uri, target.id);
+      await this.navigateNew(target.uri, target.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.output.error(`IFC 3D preview failed: ${message}`);
@@ -137,20 +162,27 @@ class ViewerController implements vscode.CodeLensProvider {
               `or a container (storey/building) that holds some.`,
           );
         }
-        const sub = extractSubModel(index, id, { includeChildren: config.includeChildren });
+        const sub = extractSubModel(index, id, {
+          includeChildren: config.includeChildren,
+          includeHostedElements: config.includeHostedElements,
+        });
         this.lastPickRemap = sub.pickRemap;
+        this.lastPickMode = sub.pickMode;
         return {
           type: "load",
           token: ++this.token,
           ifcBytes: sub.ifcBytes,
           rootId: sub.rootId,
           renderIds: sub.renderIds,
+          pickMode: sub.pickMode,
           rootType: sub.rootType,
           rootName: index.nameOf(id),
           schema: sub.schema,
           fileName: path.basename(uri.fsPath),
+          displayPath: vscode.workspace.asRelativePath(uri, false).split(/[\\/]/).join(" › "),
           includedCount: sub.includedIds.length,
           childCount: sub.childCount,
+          hostedCount: sub.hostedCount,
           truncated: sub.truncated,
         };
       },
@@ -159,10 +191,59 @@ class ViewerController implements vscode.CodeLensProvider {
     this.lastSourceUri = uri;
     const panel = IfcViewerPanel.show(this.context.extensionUri, this.output);
     if (panel !== this.panel) {
+      this.history.clear();
       this.panel = panel;
-      panel.onPick((expressId) => void this.reveal(expressId));
+      panel.onPick((target) => void this.reveal(target));
+      panel.onFocus((target) => void this.focus(target));
+      panel.onBack(() => void this.navigateHistory("back"));
+      panel.onForward(() => void this.navigateHistory("forward"));
     }
     panel.load(message);
+  }
+
+  private async navigateNew(uri: vscode.Uri, id: number): Promise<void> {
+    if (this.navigationBusy) {
+      return;
+    }
+    this.navigationBusy = true;
+    try {
+      await this.render(uri, id);
+      this.history.push({ uri, id });
+      this.updateNavigationState();
+    } finally {
+      this.navigationBusy = false;
+    }
+  }
+
+  private async navigateHistory(direction: "back" | "forward"): Promise<void> {
+    if (this.navigationBusy) {
+      return;
+    }
+    const target = direction === "back" ? this.history.peekBack() : this.history.peekForward();
+    if (!target) {
+      return;
+    }
+    this.navigationBusy = true;
+    try {
+      await this.render(target.uri, target.id);
+      if (direction === "back") {
+        this.history.commitBack();
+      } else {
+        this.history.commitForward();
+      }
+      this.updateNavigationState();
+      await this.revealSourceId(target.uri, target.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.error(`IFC 3D history navigation failed: ${message}`);
+      void vscode.window.showErrorMessage(`IFC 3D history navigation failed: ${message}`);
+    } finally {
+      this.navigationBusy = false;
+    }
+  }
+
+  private updateNavigationState(): void {
+    this.panel?.setNavigationState(this.history.canGoBack, this.history.canGoForward);
   }
 
   private async getIndex(uri: vscode.Uri, maxFileSizeMb: number): Promise<StepFileIndex> {
@@ -176,6 +257,9 @@ class ViewerController implements vscode.CodeLensProvider {
     if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
       return cached.index;
     }
+    if (cached) {
+      this.indexCache.delete(uri.fsPath);
+    }
     if (stat.size > maxFileSizeMb * MB) {
       throw new Error(
         `File is ${(stat.size / MB).toFixed(0)} MB, above the ${maxFileSizeMb} MB preview limit ` +
@@ -188,15 +272,31 @@ class ViewerController implements vscode.CodeLensProvider {
     return index;
   }
 
-  private async reveal(expressId: number): Promise<void> {
+  private async reveal(target: PickTarget): Promise<void> {
     const uri = this.lastSourceUri;
     if (!uri) {
       return;
     }
-    // A picked synthetic wrapper resolves back to the real geometry item it previews.
-    const sourceId = this.lastPickRemap.get(expressId) ?? expressId;
-    const cached = uri.scheme === "file" ? this.indexCache.get(uri.fsPath) : undefined;
-    const pos = cached?.index.positionOf(sourceId);
+    try {
+      const index = await this.getIndex(uri, readConfig().maxFileSizeMb);
+      // Geometry ids can be internal/generated by web-ifc. Only navigate to one
+      // when detailed picking is active and that id exists in the source STEP.
+      const sourceId = resolvePickSourceId(index, target, this.lastPickMode, this.lastPickRemap);
+      await this.revealSourceId(uri, sourceId, index);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.error(`IFC 3D source reveal failed: ${message}`);
+      void vscode.window.showErrorMessage(`IFC 3D source reveal failed: ${message}`);
+    }
+  }
+
+  private async revealSourceId(
+    uri: vscode.Uri,
+    sourceId: number,
+    index?: StepFileIndex,
+  ): Promise<void> {
+    const sourceIndex = index ?? (await this.getIndex(uri, readConfig().maxFileSizeMb));
+    const pos = sourceIndex.positionOf(sourceId);
     const editor = await vscode.window.showTextDocument(uri, {
       viewColumn: vscode.ViewColumn.One,
       preserveFocus: false,
@@ -208,6 +308,25 @@ class ViewerController implements vscode.CodeLensProvider {
         new vscode.Range(position, position),
         vscode.TextEditorRevealType.InCenter,
       );
+    }
+  }
+
+  private async focus(target: PickTarget): Promise<void> {
+    const uri = this.lastSourceUri;
+    if (!uri) {
+      return;
+    }
+    try {
+      const index = await this.getIndex(uri, readConfig().maxFileSizeMb);
+      const sourceId = resolveFocusSourceId(index, target, this.lastPickMode, this.lastPickRemap);
+      if (sourceId === undefined) {
+        return;
+      }
+      await this.navigateNew(uri, sourceId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.error(`IFC 3D focus failed: ${message}`);
+      void vscode.window.showErrorMessage(`IFC 3D focus failed: ${message}`);
     }
   }
 
@@ -312,6 +431,7 @@ export function registerViewer(
     vscode.window.onDidChangeTextEditorVisibleRanges((event) =>
       controller.onVisibleRangesChanged(event.textEditor),
     ),
+    vscode.workspace.onDidCloseTextDocument((document) => controller.onDocumentClosed(document)),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("ifc.viewer")) {
         controller.configChanged();

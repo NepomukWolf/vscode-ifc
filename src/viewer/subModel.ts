@@ -9,13 +9,14 @@
  *
  * Pure Node (no `vscode`): unit-testable against `test-files/`.
  */
-import { REL_VOIDS, STYLED_ITEM, StepFileIndex, collectRefs } from "./stepIndex";
+import { REL_FILLS, REL_VOIDS, STYLED_ITEM, StepFileIndex, collectRefs } from "./stepIndex";
+import type { PickMode } from "./protocol";
 
 export interface SubModelOptions {
   /** Include decomposition/assembly descendants (IfcRelAggregates/IfcRelNests). */
   includeChildren?: boolean;
-  /** Include openings (IfcRelVoidsElement) so the engine subtracts voids. */
-  includeVoids?: boolean;
+  /** Include renderable products that fill hosted openings (doors, windows, etc.). */
+  includeHostedElements?: boolean;
   /** Include IfcStyledItem closures so surfaces keep their authored colors. */
   includeStyles?: boolean;
   /** Safety cap on collected instances; extraction stops and flags truncation. */
@@ -30,11 +31,15 @@ export interface SubModelResult {
   rootId: number;
   /** Product/element ids intended for rendering, excluding helper closure ids. */
   renderIds: number[];
+  /** Source-navigation granularity appropriate for this preview context. */
+  pickMode: PickMode;
   rootType: string | undefined;
   schema: string | undefined;
   includedIds: number[];
   /** Number of decomposition descendants pulled in (excludes the root). */
   childCount: number;
+  /** Number of additional renderable products pulled in as opening fillings. */
+  hostedCount: number;
   /** True if the instance cap was hit (result may be incomplete). */
   truncated: boolean;
   /**
@@ -78,7 +83,7 @@ export function extractSubModel(
   options: SubModelOptions = {},
 ): SubModelResult {
   const includeChildren = options.includeChildren ?? true;
-  const includeVoids = options.includeVoids ?? true;
+  const includeHostedElements = options.includeHostedElements ?? true;
   const includeStyles = options.includeStyles ?? true;
   const maxInstances = options.maxInstances ?? DEFAULT_MAX_INSTANCES;
 
@@ -149,9 +154,9 @@ export function extractSubModel(
     }
   }
 
-  // 4. Openings: include the void relationship + opening geometry so solids show
+  // 4. Openings: always include the void relationship + opening geometry so solids show
   //    their cut-outs (web-ifc performs the boolean when both are present).
-  if (includeVoids && !truncated) {
+  if (!truncated) {
     for (const relId of index.relIdsOfType(REL_VOIDS)) {
       const args = index.argsOf(relId);
       const relating = firstRef(args[ARG_RELATING]);
@@ -165,7 +170,31 @@ export function extractSubModel(
     }
   }
 
-  // 5. Styles/colors: include styled items whose target representation item is in
+  // 5. Hosted products: included openings can be filled by doors, windows, or
+  //    other products. Render only fillings with meshable geometry, preserve the
+  //    relationship, and don't count products already reached as descendants.
+  let hostedCount = 0;
+  if (includeHostedElements && !truncated) {
+    for (const relId of index.relIdsOfType(REL_FILLS)) {
+      const args = index.argsOf(relId);
+      const opening = firstRef(args[ARG_RELATING]);
+      if (opening === undefined || !included.has(opening)) {
+        continue;
+      }
+      const filling = firstRef(args[ARG_RELATED]);
+      if (filling === undefined || !index.hasRenderableRepresentation(filling)) {
+        continue;
+      }
+      included.add(relId);
+      if (!renderIds.has(filling)) {
+        renderIds.add(filling);
+        hostedCount++;
+        addClosure([filling]);
+      }
+    }
+  }
+
+  // 6. Styles/colors: include styled items whose target representation item is in
   //    scope, plus their style closure (IfcSurfaceStyle -> colour).
   if (includeStyles && !truncated) {
     for (const relId of index.relIdsOfType(STYLED_ITEM)) {
@@ -177,7 +206,7 @@ export function extractSubModel(
     }
   }
 
-  // 6. Bare geometry item (a brep/solid/tessellation, not a product). web-ifc
+  // 7. Bare geometry item (a brep/solid/tessellation, not a product). web-ifc
   //    streams product meshes, so wrap the item in a synthetic IfcBuildingElementProxy
   //    + shape representation. The item keeps its real id (so its closure renders
   //    unchanged); pick-to-reveal maps the wrapper back to it via `pickRemap`.
@@ -220,7 +249,7 @@ export function extractSubModel(
     pickRemap.set(productId, rootId);
   }
 
-  // 7. Openings/spaces: products with real geometry that web-ifc won't stream.
+  // 8. Openings/spaces: products with real geometry that web-ifc won't stream.
   //    Re-present their existing shape + placement under a synthetic proxy so the
   //    direct preview renders the opening as its solid "plug"; pick-to-reveal maps
   //    the proxy back to the source.
@@ -250,15 +279,22 @@ export function extractSubModel(
 
   const includedIds = [...included].sort((a, b) => a - b);
   const ifcBytes = assemble(index, includedIds, extraLines);
+  const soleRenderedId = renderIds.size === 1 ? renderIds.values().next().value : undefined;
+  const pickMode: PickMode =
+    soleRenderedId !== undefined && (pickRemap.get(soleRenderedId) ?? soleRenderedId) === rootId
+      ? "geometry"
+      : "product";
 
   return {
     ifcBytes,
     rootId,
     renderIds: [...renderIds].sort((a, b) => a - b),
+    pickMode,
     rootType: index.getType(rootId),
     schema: index.schema,
     includedIds,
     childCount,
+    hostedCount,
     truncated,
     pickRemap,
   };

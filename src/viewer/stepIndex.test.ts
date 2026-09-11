@@ -1,14 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { strict as assert } from "node:assert";
-import { test, type TestContext } from "node:test";
-import { StepFileIndex } from "./stepIndex";
+import { test } from "node:test";
+import { REL_FILLS, StepFileIndex } from "./stepIndex";
 
 function fixture(name: string): StepFileIndex {
   return StepFileIndex.build(readFileSync(path.resolve(process.cwd(), "fixtures", name)));
 }
 
 const gate = fixture("representation-gate.ifc");
+
+test("relationship index watches IfcRelFillsElement", () => {
+  assert.deepEqual(gate.relIdsOfType(REL_FILLS), [1120]);
+});
 
 test("hasRenderableRepresentation: renders solid-bearing products (+ tolerates `= ` spacing)", () => {
   assert.equal(gate.hasRenderableRepresentation(100), true);
@@ -68,16 +72,8 @@ test("isPreviewable: spaces (own volume) and containers (contents) are previewab
   assert.equal(gate.isRenderableGeometryItem(930), false);
 });
 
-test("hasRenderableRepresentation: real sample file — products yes, sub-contexts no", (t: TestContext) => {
-  const file = path.resolve(
-    process.cwd(),
-    "test-files",
-    "000.063019MB__Ifc4_SampleHouse_1_Roof.ifc",
-  );
-  if (!existsSync(file)) {
-    t.skip("sample model not present (gitignored; local-only)");
-    return;
-  }
+test("hasRenderableRepresentation: real fixture — product yes, sub-context no", () => {
+  const file = path.resolve(process.cwd(), "fixtures", "models", "advanced-project.ifc");
   const buf = readFileSync(file);
   const index = StepFileIndex.build(buf);
   const text = buf.toString("latin1");
@@ -87,7 +83,6 @@ test("hasRenderableRepresentation: real sample file — products yes, sub-contex
     return Number.parseInt(m[1], 10);
   };
 
-  assert.equal(index.hasRenderableRepresentation(firstIdOfType("IFCROOF")), true);
   assert.equal(index.hasRenderableRepresentation(firstIdOfType("IFCSLAB")), true);
   assert.equal(
     index.hasRenderableRepresentation(firstIdOfType("IFCGEOMETRICREPRESENTATIONSUBCONTEXT")),

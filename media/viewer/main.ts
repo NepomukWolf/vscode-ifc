@@ -3,7 +3,12 @@ import { render as renderHtml } from "lit-html";
 import type { RenderEngine } from "./engine";
 import { ThatOpenEngine } from "./thatopen-engine";
 import { viewerTemplate, type ViewerTemplateState } from "./template";
-import type { HostToWebview, LoadMessage, WebviewToHost } from "../../src/viewer/protocol";
+import type {
+  HostToWebview,
+  LoadMessage,
+  PickMode,
+  WebviewToHost,
+} from "../../src/viewer/protocol";
 
 declare function acquireVsCodeApi(): { postMessage(message: WebviewToHost): void };
 
@@ -22,20 +27,27 @@ class Viewer {
   private lastFrame = performance.now();
   private activeLoadStage = "";
   private resizeObserver: ResizeObserver | undefined;
+  private resizeFrame = 0;
   private animationFrame = 0;
+  private currentPickMode: PickMode = "product";
 
+  private hudPath = "";
   private hudTitle = "";
   private hudSub = "";
-  private hudStats = "";
+  private hudInfo = "";
+  private hudInfoTitle = "";
+  private hudSelection = "";
   private hudWarn = "";
   private overlayText = "";
   private overlayBusy = false;
+  private canGoBack = false;
+  private canGoForward = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
     this.renderChrome();
     this.canvasHost = this.findCanvasHost();
-    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
     this.resizeObserver.observe(this.canvasHost);
     this.resize();
     this.tick();
@@ -43,6 +55,7 @@ class Viewer {
 
   dispose(): void {
     this.resizeObserver?.disconnect();
+    cancelAnimationFrame(this.resizeFrame);
     cancelAnimationFrame(this.animationFrame);
     this.engine?.dispose();
   }
@@ -50,6 +63,12 @@ class Viewer {
   async render(message: LoadMessage): Promise<void> {
     this.renderChrome();
     await this.renderWith(message);
+  }
+
+  setNavigationState(canGoBack: boolean, canGoForward: boolean): void {
+    this.canGoBack = canGoBack;
+    this.canGoForward = canGoForward;
+    this.renderChrome();
   }
 
   private async renderWith(message: LoadMessage): Promise<void> {
@@ -64,6 +83,7 @@ class Viewer {
         bytes: new Uint8Array(message.ifcBytes),
         rootId: message.rootId,
         renderIds: message.renderIds,
+        pickMode: message.pickMode,
       });
       if (seq !== this.renderSeq) {
         return;
@@ -81,11 +101,6 @@ class Viewer {
 
       this.setOverlay("", false);
       const elapsedMs = Math.round(performance.now() - started);
-      this.hudStats =
-        `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"}` +
-        (stats.triangles === undefined ? "" : ` · ${stats.triangles.toLocaleString()} tris`) +
-        ` · ${elapsedMs} ms`;
-      this.renderChrome();
       post({
         type: "status",
         token: message.token,
@@ -145,6 +160,18 @@ class Viewer {
     void this.currentEngine()?.reset();
   };
 
+  private readonly back = (): void => {
+    if (this.canGoBack) {
+      post({ type: "historyBack" });
+    }
+  };
+
+  private readonly forward = (): void => {
+    if (this.canGoForward) {
+      post({ type: "historyForward" });
+    }
+  };
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     const canvas = this.currentEngine()?.canvas;
     if (!canvas) {
@@ -164,21 +191,46 @@ class Viewer {
     if (Number.isFinite(downX) && Math.hypot(event.clientX - downX, event.clientY - downY) > 5) {
       return;
     }
-    const expressId = await engine.pick(event.clientX, event.clientY);
-    if (typeof expressId === "number") {
-      post({ type: "pick", expressId });
+    const target = await engine.pick(event.clientX, event.clientY);
+    if (target) {
+      this.hudSelection =
+        this.currentPickMode === "geometry" ? `Selected geometry #${target.geometryId}` : "";
+      this.renderChrome();
+      post({ type: "pick", target });
+    }
+  };
+
+  private readonly onDoubleClick = async (event: MouseEvent): Promise<void> => {
+    const engine = this.currentEngine();
+    if (!engine) {
+      return;
+    }
+    const target = await engine.pick(event.clientX, event.clientY);
+    if (target) {
+      post({ type: "focus", target });
     }
   };
 
   private setHud(message: LoadMessage): void {
+    this.currentPickMode = message.pickMode;
+    this.hudPath = message.displayPath;
     this.hudTitle = `${message.rootType ?? "Element"} #${message.rootId}`;
-    const bits = [message.rootName, message.schema, message.fileName].filter(Boolean);
-    this.hudSub = bits.join(" · ");
-    this.hudStats = "";
-    const warnings: string[] = [];
+    this.hudSub = message.rootName ?? "";
+    this.hudSelection = "";
+    const includedElements = message.childCount + message.hostedCount;
+    this.hudInfo =
+      includedElements > 0
+        ? `Includes ${includedElements} element${includedElements === 1 ? "" : "s"}`
+        : "";
+    const includedBy: string[] = [];
     if (message.childCount > 0) {
-      warnings.push(`+${message.childCount} child element${message.childCount === 1 ? "" : "s"}`);
+      includedBy.push("decomposition descendants (ifc.viewer.includeChildren)");
     }
+    if (message.hostedCount > 0) {
+      includedBy.push("hosted opening fillings (ifc.viewer.includeHostedElements)");
+    }
+    this.hudInfoTitle = includedBy.length > 0 ? `Includes ${includedBy.join(" and ")}.` : "";
+    const warnings: string[] = [];
     if (message.truncated) {
       warnings.push("⚠ extraction truncated (very large element)");
     }
@@ -202,6 +254,14 @@ class Viewer {
     engine.resize(this.canvasHost.clientWidth || 1, this.canvasHost.clientHeight || 1);
   }
 
+  private scheduleResize(): void {
+    cancelAnimationFrame(this.resizeFrame);
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resizeFrame = 0;
+      this.resize();
+    });
+  }
+
   private tick = (): void => {
     this.animationFrame = requestAnimationFrame(this.tick);
     const now = performance.now();
@@ -215,6 +275,9 @@ class Viewer {
       viewerTemplate(this.templateState(), {
         onPointerDown: this.onPointerDown,
         onPointerUp: this.onPointerUp,
+        onDoubleClick: this.onDoubleClick,
+        onBack: this.back,
+        onForward: this.forward,
         onFit: this.fit,
         onReset: this.reset,
       }),
@@ -224,9 +287,14 @@ class Viewer {
 
   private templateState(): ViewerTemplateState {
     return {
+      hudPath: this.hudPath,
       hudTitle: this.hudTitle,
       hudSub: this.hudSub,
-      hudStats: this.hudStats,
+      hudInfo: this.hudInfo,
+      hudInfoTitle: this.hudInfoTitle,
+      hudSelection: this.hudSelection,
+      canGoBack: this.canGoBack,
+      canGoForward: this.canGoForward,
       hudWarn: this.hudWarn,
       overlayText: this.overlayText,
       overlayBusy: this.overlayBusy,
@@ -241,6 +309,8 @@ if (app) {
     const message = event.data;
     if (message.type === "load") {
       void viewer.render(message);
+    } else if (message.type === "navigationState") {
+      viewer.setNavigationState(message.canGoBack, message.canGoForward);
     }
   });
   window.addEventListener("unload", () => viewer.dispose());

@@ -1,31 +1,53 @@
 import { html, type TemplateResult } from "lit-html";
 
 export type ViewerTemplateState = {
+  hudPath: string;
   hudTitle: string;
   hudSub: string;
-  hudStats: string;
+  hudInfo: string;
   hudWarn: string;
   overlayText: string;
   overlayBusy: boolean;
+  hudInfoTitle: string;
+  hudSelection: string;
+  canGoBack: boolean;
+  canGoForward: boolean;
 };
 
 export type ViewerTemplateActions = {
   onPointerDown(event: PointerEvent): void;
   onPointerUp(event: PointerEvent): void | Promise<void>;
+  onDoubleClick(event: MouseEvent): void | Promise<void>;
+  onBack(): void;
+  onForward(): void;
   onFit(): void;
   onReset(): void;
 };
 
 export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTemplateActions): TemplateResult {
   return html`
-    <div class="viewer-canvas" @pointerdown=${actions.onPointerDown} @pointerup=${actions.onPointerUp}></div>
+    <div
+      class="viewer-canvas"
+      @pointerdown=${actions.onPointerDown}
+      @pointerup=${actions.onPointerUp}
+      @dblclick=${actions.onDoubleClick}
+    ></div>
     <div class="hud">
+      <div class="hud-path">${state.hudPath}</div>
       <div class="hud-title">${state.hudTitle}</div>
       <div class="hud-sub">${state.hudSub}</div>
-      <div class="hud-stats">${state.hudStats}</div>
+      <div class="hud-selection">${state.hudSelection}</div>
+      <div
+        class="hud-info"
+        title=${state.hudInfoTitle}
+      >
+        ${state.hudInfo}
+      </div>
       <div class="hud-warn">${state.hudWarn}</div>
     </div>
     <div class="toolbar">
+      <button class="tool-button" title="Back" aria-label="Back" ?disabled=${!state.canGoBack} @click=${actions.onBack}>←</button>
+      <button class="tool-button" title="Forward" aria-label="Forward" ?disabled=${!state.canGoForward} @click=${actions.onForward}>→</button>
       <button class="tool-button" title="Frame the element" @click=${actions.onFit}>Fit</button>
       <button class="tool-button" title="Reset the camera" @click=${actions.onReset}>Reset</button>
     </div>
@@ -35,6 +57,6 @@ export function viewerTemplate(state: ViewerTemplateState, actions: ViewerTempla
     >
       ${state.overlayText}
     </div>
-    <div class="hint">Click geometry to jump to its source line · drag to orbit · scroll to zoom</div>
+    <div class="hint">Click to jump to source · double-click to preview selection · drag to orbit · scroll to zoom</div>
   `;
 }
