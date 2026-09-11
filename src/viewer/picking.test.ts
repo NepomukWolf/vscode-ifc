@@ -11,61 +11,30 @@ const index = StepFileIndex.build(
 
 test("geometry picking navigates to a source representation item", () => {
   assert.equal(
-    resolvePickSourceId(index, { productId: 100, geometryId: 104 }, "geometry", new Map()),
+    resolvePickSourceId(index, { productId: 100, geometryItemId: 104 }, "geometry"),
     104,
   );
 });
 
 test("product picking ignores the part id", () => {
+  assert.equal(resolvePickSourceId(index, { productId: 100, geometryItemId: 104 }, "product"), 100);
+});
+
+test("unknown or absent representation item ids fall back to the product", () => {
   assert.equal(
-    resolvePickSourceId(index, { productId: 100, geometryId: 104 }, "product", new Map()),
+    resolvePickSourceId(index, { productId: 100, geometryItemId: 9001 }, "geometry"),
     100,
   );
+  assert.equal(resolvePickSourceId(index, { productId: 100 }, "geometry"), 100);
 });
 
-test("generated geometry ids fall back through the product remap", () => {
+test("geometry focus is a no-op because representation items cannot be isolated", () => {
   assert.equal(
-    resolvePickSourceId(
-      index,
-      { productId: 9000, geometryId: 9001 },
-      "geometry",
-      new Map([[9000, 1100]]),
-    ),
-    1100,
-  );
-});
-
-test("geometry focus previews a source-backed renderable representation item", () => {
-  assert.equal(
-    resolveFocusSourceId(index, { productId: 500, geometryId: 504 }, "geometry", new Map()),
-    504,
-  );
-  assert.equal(
-    resolveFocusSourceId(index, { productId: 100, geometryId: 104 }, "geometry", new Map()),
-    104,
-  );
-});
-
-test("geometry focus does nothing for unsupported or generated geometry", () => {
-  // #204 is a curve-only IfcPolyline; #9001 does not exist in the source STEP.
-  assert.equal(
-    resolveFocusSourceId(index, { productId: 200, geometryId: 204 }, "geometry", new Map()),
-    undefined,
-  );
-  assert.equal(
-    resolveFocusSourceId(index, { productId: 100, geometryId: 9001 }, "geometry", new Map()),
+    resolveFocusSourceId({ productId: 500, geometryItemId: 504 }, "geometry"),
     undefined,
   );
 });
 
-test("product focus ignores geometry and preserves synthetic wrapper remapping", () => {
-  assert.equal(
-    resolveFocusSourceId(
-      index,
-      { productId: 9000, geometryId: 504 },
-      "product",
-      new Map([[9000, 1100]]),
-    ),
-    1100,
-  );
+test("product focus ignores the representation item", () => {
+  assert.equal(resolveFocusSourceId({ productId: 100, geometryItemId: 104 }, "product"), 100);
 });

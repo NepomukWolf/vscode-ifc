@@ -14,7 +14,6 @@ export interface RenderStats {
 export interface RenderLoad {
   modelKey: string;
   bytes?: Uint8Array;
-  rootId: number;
   renderIds: readonly number[];
   pickMode: PickMode;
 }

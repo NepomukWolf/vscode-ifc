@@ -1,3 +1,4 @@
+import type { PickMode } from "./protocol";
 import { collectRefs, REL_FILLS, REL_VOIDS, type StepFileIndex } from "./stepIndex";
 
 export interface PreviewSelectionOptions {
@@ -7,6 +8,7 @@ export interface PreviewSelectionOptions {
 
 export interface PreviewSelection {
   renderIds: number[];
+  pickMode: PickMode;
   childCount: number;
   hostedCount: number;
 }
@@ -94,8 +96,13 @@ export function resolvePreviewSelection(
     }
   }
 
+  const sortedRenderIds = [...renderIds].sort((left, right) => left - right);
   return {
-    renderIds: [...renderIds].sort((left, right) => left - right),
+    renderIds: sortedRenderIds,
+    // Products stay atomic in relational contexts. Once the focused product is
+    // the whole visible context, picks may drill into its representation items.
+    pickMode:
+      sortedRenderIds.length === 1 && sortedRenderIds[0] === rootId ? "geometry" : "product",
     childCount,
     hostedCount,
   };

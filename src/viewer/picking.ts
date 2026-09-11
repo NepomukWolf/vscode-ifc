@@ -6,29 +6,24 @@ export function resolvePickSourceId(
   index: StepFileIndex,
   target: PickTarget,
   pickMode: PickMode,
-  pickRemap: ReadonlyMap<number, number>,
 ): number {
   if (
     pickMode === "geometry" &&
-    target.geometryId !== undefined &&
-    index.hasId(target.geometryId)
+    target.geometryItemId !== undefined &&
+    index.hasId(target.geometryItemId)
   ) {
-    return target.geometryId;
+    return target.geometryItemId;
   }
-  return pickRemap.get(target.productId) ?? target.productId;
+  return target.productId;
 }
 
 /** Resolve a double-click to an independently previewable source entity. */
-export function resolveFocusSourceId(
-  index: StepFileIndex,
-  target: PickTarget,
-  pickMode: PickMode,
-  pickRemap: ReadonlyMap<number, number>,
-): number | undefined {
+export function resolveFocusSourceId(target: PickTarget, pickMode: PickMode): number | undefined {
+  // ifc-lite isolates owning products, not representation items. A detailed
+  // double-click must therefore be a no-op rather than create a misleading
+  // item context that still renders the complete product.
   if (pickMode === "geometry") {
-    return target.geometryId !== undefined && index.isPreviewable(target.geometryId, false)
-      ? target.geometryId
-      : undefined;
+    return undefined;
   }
-  return pickRemap.get(target.productId) ?? target.productId;
+  return target.productId;
 }

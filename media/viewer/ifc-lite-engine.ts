@@ -1,6 +1,11 @@
 import { decodeInstancedShard, GeometryProcessor, type MeshData } from "@ifc-lite/geometry";
-import { Renderer, type RenderOptions } from "@ifc-lite/renderer";
+import {
+  type GeometryItemSelection,
+  Renderer,
+  type RenderOptions,
+} from "@ifc-lite/renderer";
 import type { PickTarget } from "../../src/viewer/protocol";
+import type { PickMode } from "../../src/viewer/protocol";
 import type { EngineOptions, RenderEngine, RenderLoad, RenderStats } from "./engine";
 
 interface Bounds {
@@ -69,6 +74,8 @@ export class IfcLiteEngine implements RenderEngine {
   private modelKey: string | undefined;
   private isolatedIds = new Set<number>();
   private selectedIds = new Set<number>();
+  private selectedGeometryItem: GeometryItemSelection | undefined;
+  private pickMode: PickMode = "product";
   private readonly background = cssBackground();
   private loading = false;
   private disposed = false;
@@ -100,6 +107,8 @@ export class IfcLiteEngine implements RenderEngine {
     const loadStartedAt = performance.now();
     this.isolatedIds = new Set(load.renderIds);
     this.selectedIds.clear();
+    this.selectedGeometryItem = undefined;
+    this.pickMode = load.pickMode;
 
     const replacingModel = this.modelKey !== load.modelKey;
     if (replacingModel) {
@@ -240,6 +249,7 @@ export class IfcLiteEngine implements RenderEngine {
       clearColor: this.background,
       isolatedIds: this.isolatedIds,
       selectedIds: this.selectedIds,
+      selectedGeometryItem: this.selectedGeometryItem,
       isStreaming: this.loading,
     };
   }
@@ -337,14 +347,36 @@ export class IfcLiteEngine implements RenderEngine {
     const hit = await renderer.pick(clientX - rect.left, clientY - rect.top, {
       isolatedIds: this.isolatedIds,
     });
-    if (!hit) {
+
+    let target: PickTarget | undefined;
+    if (this.pickMode === "geometry") {
+      if (hit?.geometryItemId !== undefined) {
+        target = { productId: hit.expressId, geometryItemId: hit.geometryItemId };
+      } else if (hit) {
+        target = { productId: hit.expressId };
+      }
+    } else if (hit) {
+      target = { productId: hit.expressId };
+    }
+
+    if (!target) {
       this.selectedIds.clear();
+      this.selectedGeometryItem = undefined;
       this.requestRender();
       return undefined;
     }
-    this.selectedIds = new Set([hit.expressId]);
+    if (target.geometryItemId !== undefined) {
+      this.selectedIds.clear();
+      this.selectedGeometryItem = {
+        expressId: target.productId,
+        geometryItemId: target.geometryItemId,
+      };
+    } else {
+      this.selectedIds = new Set([target.productId]);
+      this.selectedGeometryItem = undefined;
+    }
     this.requestRender();
-    return { productId: hit.expressId };
+    return target;
   }
 
   resize(width: number, height: number): void {

@@ -12,7 +12,7 @@ export interface PickTarget {
   /** The IFC product that owns the rendered geometry. */
   productId: number;
   /** The originating representation item, when a renderer exposes it. */
-  geometryId?: number;
+  geometryItemId?: number;
 }
 
 export interface LoadMessage {
@@ -31,14 +31,11 @@ export interface LoadMessage {
   pickMode: PickMode;
   rootType?: string;
   rootName?: string;
-  schema?: string;
   fileName: string;
   /** Workspace-relative source path formatted for display in the viewer HUD. */
   displayPath: string;
-  includedCount: number;
   childCount: number;
   hostedCount: number;
-  truncated: boolean;
 }
 
 export interface NavigationStateMessage {

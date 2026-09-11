@@ -55,9 +55,9 @@ const REPRESENTATION_HOLDERS = new Set(["IFCPRODUCTDEFINITIONSHAPE", "IFCPRODUCT
  * we never render them *as elements* inside an assembly/floor walk — they'd just
  * obscure the real building elements.
  * They are still recursed *through* to reach the physical elements they contain
- * (`extractSubModel` follows `IfcRelContainedInSpatialStructure`), which is how a
- * "preview the whole floor" works. A spatial element with its *own* geometry (an
- * IfcSpace volume, IfcSite terrain) still previews directly via the proxy wrapper.
+ * (the preview selection follows `IfcRelContainedInSpatialStructure`), which is
+ * how a "preview the whole floor" works. A spatial element with its own geometry
+ * (an IfcSpace volume or IfcSite terrain) can still preview directly.
  */
 const SPATIAL_CONTAINER_TYPES = new Set([
   "IFCPROJECT",
@@ -95,54 +95,6 @@ const NON_RENDERABLE_REPRESENTATION_TYPES = new Set([
   "SURVEY",
   "REFERENCE",
   "LIGHTSOURCE",
-]);
-
-/**
- * Bare `IfcRepresentationItem` entity types that web-ifc tessellates into a
- * surface/solid mesh, mapped to the `IfcShapeRepresentation.RepresentationType`
- * we stamp on the synthetic product wrapper used to preview them (see
- * `subModel.ts`). web-ifc keys meshing off the item entity itself, so the string
- * is mostly metadata — but our own renderable
- * gate inspects it, so it must be a non-excluded type.
- *
- * Scope is Tier A: solids and bounded surfaces. Curves (Polyline/CompositeCurve/
- * TrimmedCurve), unbounded surfaces (IfcPlane) and points are intentionally out —
- * they need a line/gizmo render path in the engines and are tracked separately.
- */
-const RENDERABLE_ITEM_TYPES = new Map<string, string>([
-  // Swept area solids
-  ["IFCEXTRUDEDAREASOLID", "SweptSolid"],
-  ["IFCEXTRUDEDAREASOLIDTAPERED", "SweptSolid"],
-  ["IFCREVOLVEDAREASOLID", "SweptSolid"],
-  ["IFCREVOLVEDAREASOLIDTAPERED", "SweptSolid"],
-  ["IFCSURFACECURVESWEPTAREASOLID", "AdvancedSweptSolid"],
-  ["IFCFIXEDREFERENCESWEPTAREASOLID", "AdvancedSweptSolid"],
-  ["IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID", "AdvancedSweptSolid"],
-  ["IFCSWEPTDISKSOLID", "AdvancedSweptSolid"],
-  ["IFCSWEPTDISKSOLIDPOLYGONAL", "AdvancedSweptSolid"],
-  ["IFCSECTIONEDSOLID", "AdvancedSweptSolid"],
-  ["IFCSECTIONEDSOLIDHORIZONTAL", "AdvancedSweptSolid"],
-  // Boundary-representation solids and surface models
-  ["IFCFACETEDBREP", "Brep"],
-  ["IFCFACETEDBREPWITHVOIDS", "Brep"],
-  ["IFCMANIFOLDSOLIDBREP", "Brep"],
-  ["IFCADVANCEDBREP", "AdvancedBrep"],
-  ["IFCADVANCEDBREPWITHVOIDS", "AdvancedBrep"],
-  ["IFCSHELLBASEDSURFACEMODEL", "SurfaceModel"],
-  ["IFCFACEBASEDSURFACEMODEL", "SurfaceModel"],
-  // CSG / boolean / primitive solids
-  ["IFCCSGSOLID", "CSG"],
-  ["IFCBOOLEANRESULT", "CSG"],
-  ["IFCBOOLEANCLIPPINGRESULT", "Clipping"],
-  ["IFCBLOCK", "CSG"],
-  ["IFCRECTANGULARPYRAMID", "CSG"],
-  ["IFCRIGHTCIRCULARCONE", "CSG"],
-  ["IFCRIGHTCIRCULARCYLINDER", "CSG"],
-  ["IFCSPHERE", "CSG"],
-  // Tessellated geometry
-  ["IFCTRIANGULATEDFACESET", "Tessellation"],
-  ["IFCPOLYGONALFACESET", "Tessellation"],
-  ["IFCTRIANGULATEDIRREGULARNETWORK", "Tessellation"],
 ]);
 
 function isDigit(b: number): boolean {
@@ -198,21 +150,6 @@ export class StepFileIndex {
     return this.startById.has(id);
   }
 
-  /** Verbatim header bytes (`ISO-10303-21; ... DATA;`), preserving the schema. */
-  headerBytes(): Buffer {
-    return this.buf.subarray(0, this.headerEndOffset);
-  }
-
-  /** Raw bytes of the full instance `#id=KEYWORD(...);`, or undefined if unknown.
-   *  A view into the source buffer — copy (e.g. via Buffer.concat) before mutating. */
-  sliceInstanceBytes(id: number): Buffer | undefined {
-    const start = this.startById.get(id);
-    if (start === undefined) {
-      return undefined;
-    }
-    return this.buf.subarray(start, findStatementEnd(this.buf, start));
-  }
-
   /** The full instance text `#id=KEYWORD(...);`, or undefined if id is unknown. */
   sliceInstance(id: number): string | undefined {
     const start = this.startById.get(id);
@@ -230,16 +167,6 @@ export class StepFileIndex {
       return undefined;
     }
     return readTypeKeyword(this.buf, start);
-  }
-
-  /** Forward `#ref` ids appearing in this instance's arguments (excludes self). */
-  refsOf(id: number): number[] {
-    const text = this.sliceInstance(id);
-    if (text === undefined) {
-      return [];
-    }
-    const body = instanceBody(text);
-    return collectRefs(body);
   }
 
   /** Top-level (paren/quote-aware) argument strings of an instance. */
@@ -317,29 +244,10 @@ export class StepFileIndex {
   }
 
   /**
-   * True if `id` is a bare `IfcRepresentationItem` the engines mesh on its own
-   * (a solid or bounded surface — see `RENDERABLE_ITEM_TYPES`), rather than a
-   * product. These have no `Representation` attribute, so `extractSubModel` wraps
-   * them in a synthetic product to feed the (product-only) geometry pipelines.
-   */
-  isRenderableGeometryItem(id: number): boolean {
-    return this.geometryItemRepType(id) !== undefined;
-  }
-
-  /**
-   * The `IfcShapeRepresentation.RepresentationType` to stamp when wrapping a bare
-   * geometry item for preview, or undefined if `id` is not a meshable item type.
-   */
-  geometryItemRepType(id: number): string | undefined {
-    const type = this.getType(id);
-    return type ? RENDERABLE_ITEM_TYPES.get(type) : undefined;
-  }
-
-  /**
    * True if `id` is a decomposition/assembly parent (e.g. IfcStair, IfcRamp,
    * IfcRoof, IfcCurtainWall, IfcElementAssembly) that carries no own geometry but
    * whose `IfcRelAggregates`/`IfcRelNests` descendants do. Such elements render
-   * fine — `extractSubModel`'s `includeChildren` walk pulls the children's
+   * fine — the preview selection's `includeChildren` walk pulls the children's
    * geometry — so the preview lens should be offered for them too. Walks the
    * (cached) parent->children graph transitively, cycle-guarded.
    */
@@ -376,7 +284,7 @@ export class StepFileIndex {
     if (this.isSpatialContainer(id)) {
       return false;
     }
-    return this.hasRenderableRepresentation(id) || this.isRenderableGeometryItem(id);
+    return this.hasRenderableRepresentation(id);
   }
 
   /** True if `id` is a spatial structure element (project/site/building/storey/space). */
@@ -388,21 +296,6 @@ export class StepFileIndex {
   /** Decomposition + spatial-containment children of `id` (cached graph). */
   decompositionChildrenOf(id: number): number[] {
     return this.decompositionChildren().get(id) ?? [];
-  }
-
-  /**
-   * Single source of truth for "does this element get a Preview in 3D button?",
-   * shared by the lens provider, the view command, and the render test:
-   *  - its own geometry, or a bare geometry item we can wrap; or
-   *  - (when child decomposition is on) an assembly/spatial container whose
-   *    descendants carry geometry — IfcStair flights, a whole building storey, …
-   */
-  isPreviewable(id: number, includeChildren: boolean): boolean {
-    return (
-      this.hasRenderableRepresentation(id) ||
-      this.isRenderableGeometryItem(id) ||
-      (includeChildren && this.hasRenderableDescendant(id))
-    );
   }
 
   /**
@@ -442,22 +335,6 @@ export class StepFileIndex {
     return map;
   }
 
-  /** Largest express id present, used to allocate collision-free synthetic ids. */
-  maxExpressId(): number {
-    let max = 0;
-    for (const id of this.startById.keys()) {
-      if (id > max) {
-        max = id;
-      }
-    }
-    return max;
-  }
-
-  /** A 3D `IfcGeometricRepresentationContext` to anchor a synthetic shape rep, if any. */
-  geometricContextId(): number | undefined {
-    return this.findFirstOfType(["IFCGEOMETRICREPRESENTATIONCONTEXT"]);
-  }
-
   /** True if a representation's `RepresentationType` is one the engine tessellates. */
   private isRenderableRepresentation(repId: number): boolean {
     // IfcRepresentation(ContextOfItems, RepresentationIdentifier, RepresentationType, Items).
@@ -468,21 +345,6 @@ export class StepFileIndex {
     }
     const value = repType.slice(1, repType.endsWith("'") ? -1 : undefined).toUpperCase();
     return !NON_RENDERABLE_REPRESENTATION_TYPES.has(value);
-  }
-
-  /** First express id (in file order) whose entity type matches one of `types`. */
-  findFirstOfType(types: Iterable<string>): number | undefined {
-    const wanted = new Set<string>();
-    for (const t of types) {
-      wanted.add(t.toUpperCase());
-    }
-    for (const [id, start] of this.startById) {
-      const type = readTypeKeyword(this.buf, start);
-      if (type && wanted.has(type)) {
-        return id;
-      }
-    }
-    return undefined;
   }
 
   /** Express ids of every instance of a watched relationship/style type. */

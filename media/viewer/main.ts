@@ -83,7 +83,6 @@ class Viewer {
       const stats = await engine.load({
         modelKey: message.modelKey,
         bytes: message.ifcBytes ? new Uint8Array(message.ifcBytes) : undefined,
-        rootId: message.rootId,
         renderIds: message.renderIds,
         pickMode: message.pickMode,
       });
@@ -196,8 +195,8 @@ class Viewer {
     const target = await engine.pick(event.clientX, event.clientY);
     if (target) {
       this.hudSelection =
-        this.currentPickMode === "geometry" && target.geometryId !== undefined
-          ? `Selected geometry #${target.geometryId}`
+        this.currentPickMode === "geometry" && target.geometryItemId !== undefined
+          ? `Selected geometry #${target.geometryItemId}`
           : "";
       this.renderChrome();
       post({ type: "pick", target });
@@ -234,11 +233,7 @@ class Viewer {
       includedBy.push("hosted opening fillings (ifc.viewer.includeHostedElements)");
     }
     this.hudInfoTitle = includedBy.length > 0 ? `Includes ${includedBy.join(" and ")}.` : "";
-    const warnings: string[] = [];
-    if (message.truncated) {
-      warnings.push("⚠ extraction truncated (very large element)");
-    }
-    this.hudWarn = warnings.join(" · ");
+    this.hudWarn = "";
     this.renderChrome();
   }
 
