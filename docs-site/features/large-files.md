@@ -19,7 +19,7 @@ These features are still bounded by VS Code performance and the size of the file
 
 ## Analysis Limit
 
-`ifc.analysis.astFileSizeLimitMb` controls the maximum file size for AST-backed language-server features.
+`ifc.analysis.astFileSizeLimitMb` controls the maximum file size for AST-backed language-server features. When unset, the language server's default applies.
 
 Files above this limit keep lighter features available where possible, such as basic hover, navigation, document highlight, signature help, inlay hints, and semantic tokens, but may skip schema diagnostics, derived-value hover, and the spatial Outline.
 

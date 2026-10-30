@@ -93,7 +93,9 @@ function getInitializationOptions(config: IfcExtensionConfig): IfcInitialization
     initializationOptions.addLocalSchemaToSelection = config.addLocalSchemaToSelection;
   }
 
-  initializationOptions.astFileSizeLimitMb = config.astFileSizeLimitMb;
+  if (config.astFileSizeLimitMb !== undefined) {
+    initializationOptions.astFileSizeLimitMb = config.astFileSizeLimitMb;
+  }
   initializationOptions.semanticTokensEnabled = config.semanticTokensEnabled;
 
   return initializationOptions;
