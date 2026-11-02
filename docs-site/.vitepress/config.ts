@@ -40,9 +40,7 @@ export default defineConfig({
       },
       {
         text: "Reference",
-        items: [
-          { text: "Development", link: "/development" },
-        ],
+        items: [{ text: "Development", link: "/development" }],
       },
     ],
     socialLinks: [{ icon: "github", link: "https://github.com/NepomukWolf/vscode-ifc" }],

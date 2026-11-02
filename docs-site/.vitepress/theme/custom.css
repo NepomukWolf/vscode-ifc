@@ -15,3 +15,21 @@
   opacity: 0.78;
   border-radius: 0;
 }
+
+.site-footer {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 24px 32px;
+  font-size: 13px;
+  color: var(--vp-c-text-3);
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.site-footer a {
+  color: var(--vp-c-text-3);
+}
+
+.site-footer a:hover {
+  color: var(--vp-c-text-1);
+}

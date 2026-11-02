@@ -13,6 +13,12 @@ export default {
             alt: "IFC Language Tools logo",
           }),
         ]),
+      "layout-bottom": () =>
+        h("footer", { class: "site-footer" }, [
+          h("span", `© ${new Date().getFullYear()} Nepomuk Wolf`),
+          h("a", { href: "/vscode-ifc/licenses" }, "Licenses"),
+          h("a", { href: "/vscode-ifc/imprint" }, "Imprint"),
+        ]),
     });
   },
 };
