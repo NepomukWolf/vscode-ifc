@@ -55,7 +55,7 @@
       "patterns": [
         {
           "name": "constant.language.enumeration.ifc",
-          "match": "\\.[A-Z_]+\\."
+          "match": "\\.[A-Z][A-Z0-9_]*\\."
         }
       ]
     },
@@ -80,7 +80,7 @@
       "patterns": [
         {
           "name": "constant.numeric.ifc",
-          "match": "-?[0-9]+(\\.[0-9]+)?([Ee][+-]?[0-9]+)?"
+          "match": "-?[0-9]+(\\.[0-9]*)?([Ee][+-]?[0-9]+)?"
         }
       ]
     },

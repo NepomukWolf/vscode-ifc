@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix syntax highlighting for enumeration values containing digits and reals with a bare trailing dot
+
 ## 0.6.0
 
 - Include doors, windows, and other hosted opening fillings in their host's 3D preview
