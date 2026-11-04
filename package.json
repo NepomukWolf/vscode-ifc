@@ -124,10 +124,13 @@
             "markdownDescription": "Optional list of local `.exp` files or directories containing `.exp` files. These paths are added to the language server's schema selection pool."
           },
           "ifc.analysis.astFileSizeLimitMb": {
-            "type": "number",
-            "default": 70,
+            "type": [
+              "number",
+              "null"
+            ],
+            "default": null,
             "minimum": 0.001,
-            "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics, derived-value hover, and the spatial Outline."
+            "markdownDescription": "Maximum IFC file size in MiB for AST-backed language-server features. Larger files keep basic hover, navigation, and semantic tokens available, but skip schema diagnostics, derived-value hover, and the spatial Outline. When unset, the language server's default applies."
           },
           "ifc.semanticTokens.enabled": {
             "type": "boolean",
@@ -228,7 +231,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "watch": "node esbuild.js --watch",
-    "build:test": "esbuild src/viewer/*.test.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
+    "build:test": "esbuild src/*.test.ts src/viewer/*.test.ts --entry-names=[name] --bundle --platform=node --format=cjs --target=node20 --external:vscode --outdir=out/test",
     "test": "npm run build:test && node --test out/test/*.test.js",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package"
